@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { 
   FaPhone, 
   FaEnvelope, 
@@ -67,9 +68,9 @@ const Navbar = () => {
           {/* Desktop Navigation */}
           <div className="hidden md:flex space-x-8">
             {navigation.map((item) => (
-              <a
+              <Link
                 key={item.name}
-                href={item.href}
+                to={item.href}
                 className={`px-3 py-2 text-sm font-medium transition-all duration-200 ${
                   item.current
                     ? 'text-blue-600 border-b-2 border-blue-600 font-semibold'
@@ -77,7 +78,7 @@ const Navbar = () => {
                 }`}
               >
                 {item.name}
-              </a>
+              </Link>
             ))}
           </div>
 

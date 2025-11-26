@@ -1,13 +1,13 @@
 import React from 'react';
-
+import { Link } from 'react-router-dom';
 const Footer = () => {
   const currentYear = new Date().getFullYear();
 
   const quickLinks = [
     { name: 'Home', href: '/' },
-    { name: 'Properties', href: '/properties' },
-    { name: 'About', href: '/about' },
-    { name: 'Contact', href: '/contact' }
+    { name: 'Properties', href: '/realEstateOctopus/properties' },
+    { name: 'About', href: '/realEstateOctopus/about' },
+    { name: 'Contact', href: '/realEstateOctopus/contact' }
   ];
 
   const services = [
@@ -193,13 +193,13 @@ const Footer = () => {
             </div>
             <div className="flex space-x-6 text-sm">
               {['Privacy Policy', 'Terms of Service', 'Sitemap'].map((item) => (
-                <a 
+                <Link 
                   key={item} 
                   href="#" 
                   className="text-gray-400 hover:text-white transition-colors duration-300 text-sm"
                 >
                   {item}
-                </a>
+                </Link>
               ))}
             </div>
           </div>
