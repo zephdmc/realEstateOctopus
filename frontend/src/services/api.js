@@ -3,7 +3,7 @@ import { getAuth } from 'firebase/auth';
 
 // Create axios instance with base configuration
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
+  baseURL: import.meta.env.VITE_API_URL || 'https://realestateoctopus-production.up.railway.app/api',
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
@@ -29,11 +29,8 @@ api.interceptors.request.use(
     }
     
     // Add timestamp to avoid caching
-    if (config.method === 'get') {
-      config.params = {
-        ...config.params,
-        _t: Date.now(),
-      };
+    if (config.method === 'get' && config.params) {
+      config.params._t = Date.now();
     }
     
     // Log request details for debugging
@@ -55,7 +52,7 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => {
     console.log(`✅ ${response.config.method?.toUpperCase()} ${response.config.url} SUCCESS:`, response.data);
-    return response.data;
+    return response;
   },
   (error) => {
     const { response, config } = error;
@@ -70,52 +67,42 @@ api.interceptors.response.use(
     if (response) {
       switch (response.status) {
         case 400:
-          // Bad Request - show detailed validation errors
           console.error('🔍 400 Validation Errors:', response.data);
           if (response.data?.errors) {
             console.error('📋 Field-specific errors:', response.data.errors);
           }
           break;
         case 401:
-          // Unauthorized
           console.warn('🔐 Unauthorized access - please login again');
           const currentPath = window.location.pathname;
-          if (!currentPath.startsWith('/admin')) {
+          if (!currentPath.includes('/admin')) {
             window.location.href = '/login?redirect=' + encodeURIComponent(currentPath);
           } else {
             console.log('📍 On admin page, not redirecting to login');
           }
           break;
         case 403:
-          // Forbidden
           console.error('🚫 Access forbidden:', response.data?.message);
           break;
         case 404:
-          // Not found
           console.error('🔍 Resource not found:', config?.url);
           break;
         case 409:
-          // Conflict
           console.error('⚡ Conflict:', response.data?.message);
           break;
         case 422:
-          // Unprocessable Entity
           console.error('📝 Validation failed:', response.data?.errors);
           break;
         case 429:
-          // Rate limited
           console.error('⏰ Rate limit exceeded:', response.data?.message);
           break;
         case 500:
-          // Server error
           console.error('💥 Server error:', response.data?.message);
           break;
         case 502:
-          // Bad Gateway
           console.error('🌐 Bad Gateway - Server may be down');
           break;
         case 503:
-          // Service Unavailable
           console.error('🔧 Service Unavailable - Server maintenance');
           break;
         default:
@@ -131,7 +118,7 @@ api.interceptors.response.use(
       status: response?.status,
       code: response?.data?.code,
       errors: response?.data?.errors,
-      data: response?.data, // Include full response data
+      data: response?.data,
       url: config?.url,
       method: config?.method,
       timestamp: new Date().toISOString()
@@ -222,7 +209,7 @@ export const apiService = {
   getCurrentUser: () => api.get('/auth/me'),
 };
 
-// UPLOAD API - Add this new section
+// UPLOAD API
 export const uploadAPI = {
   // Upload single file
   uploadFile: (file, category = 'property', description = '', tags = []) => {
@@ -264,10 +251,12 @@ export const uploadAPI = {
 
     console.log('🔍 Fetching uploads with params:', params);
     return apiService.get('/upload', {
-      page,
-      limit,
-      category,
-      search
+      params: {
+        page,
+        limit,
+        category,
+        search
+      }
     });
   },
 
@@ -291,11 +280,11 @@ export const uploadAPI = {
 
   // Upload with progress tracking
   uploadWithProgress: (files, category = 'property', onProgress) => {
-    return apiService.uploadMultiple(files, category, onProgress);
+    return uploadAPI.uploadMultipleFiles(files, category, '', [], onProgress);
   }
 };
 
-// Properties API with enhanced methods - UPDATED TO USE UPLOAD API
+// Properties API with enhanced methods
 export const propertiesAPI = {
   // Get all properties with optional filters
   getProperties: (filters = {}) => {
@@ -310,23 +299,27 @@ export const propertiesAPI = {
       bathrooms,
       city,
       featured,
-      search
+      search,
+      sort
     } = filters;
 
     console.log('🔍 Fetching properties with filters:', filters);
     
     return apiService.get('/properties', {
-      page,
-      limit,
-      type,
-      status,
-      minPrice,
-      maxPrice,
-      bedrooms,
-      bathrooms,
-      city,
-      featured,
-      search
+      params: {
+        page,
+        limit,
+        type,
+        status,
+        minPrice,
+        maxPrice,
+        bedrooms,
+        bathrooms,
+        city,
+        featured,
+        search,
+        sort
+      }
     });
   },
 
@@ -368,7 +361,7 @@ export const propertiesAPI = {
     return apiService.delete(`/properties/${id}`);
   },
 
-  // Upload property images - NOW USING UPLOAD API
+  // Upload property images
   uploadImages: (files, onProgress = null) => {
     console.log(`🖼️ Uploading ${files.length} property images...`);
     return uploadAPI.uploadMultipleFiles(files, 'property', '', [], onProgress);
@@ -400,7 +393,7 @@ export const propertiesAPI = {
   getPropertySchema: () => apiService.get('/properties/schema'),
 };
 
-// Blog API - UPDATED TO USE UPLOAD API
+// Blog API
 export const blogAPI = {
   // Get all blog posts with optional filters
   getPosts: (filters = {}) => {
@@ -414,12 +407,14 @@ export const blogAPI = {
     } = filters;
 
     return apiService.get('/blog', {
-      page,
-      limit,
-      category,
-      status,
-      search,
-      tag
+      params: {
+        page,
+        limit,
+        category,
+        status,
+        search,
+        tag
+      }
     });
   },
 
@@ -459,11 +454,11 @@ export const blogAPI = {
 
   // Get posts by category
   getPostsByCategory: (category) => 
-    apiService.get('/blog', { category, status: 'published' }),
+    apiService.get('/blog', { params: { category, status: 'published' } }),
 
   // Get posts by tag
   getPostsByTag: (tag) => 
-    apiService.get('/blog', { tag, status: 'published' }),
+    apiService.get('/blog', { params: { tag, status: 'published' } }),
 };
 
 // Admin API (for admin dashboard)
@@ -489,7 +484,7 @@ export const adminAPI = {
     uploadAPI.getUploads(params),
 };
 
-// Debug utilities - UPDATED TO INCLUDE UPLOAD TESTING
+// Debug utilities
 export const debugAPI = {
   // Test backend connection
   testBackend: () => apiService.testConnection(),
@@ -533,5 +528,3 @@ export const debugAPI = {
 
 // Export the main apiService as default
 export default apiService;
-
-// REMOVED THE DUPLICATE EXPORT: export { uploadAPI };
