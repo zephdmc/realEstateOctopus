@@ -1,5 +1,4 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
 const Footer = () => {
   const currentYear = new Date().getFullYear();
 
@@ -108,14 +107,14 @@ const Footer = () => {
             </p>
             <div className="flex space-x-3">
               {socialLinks.map((social) => (
-                <Link
+                <a
                   key={social.name}
                   href={social.href}
                   className="w-8 h-8 bg-gray-800 rounded-lg flex items-center justify-center hover:bg-blue-600 transition-all duration-300 hover:shadow-lg"
                   title={social.name}
                 >
                   {social.icon}
-                </Link>
+                </a>
               ))}
             </div>
           </div>
@@ -128,13 +127,13 @@ const Footer = () => {
             <ul className="space-y-3">
               {quickLinks.map((link) => (
                 <li key={link.name}>
-                  <Link
+                  <a
                     href={link.href}
                     className="text-gray-400 hover:text-white transition-colors duration-300 text-sm flex items-center group"
                   >
                     <span className="w-1 h-1 bg-blue-500 rounded-full mr-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
                     {link.name}
-                  </Link>
+                  </a>
                 </li>
               ))}
             </ul>
@@ -148,13 +147,13 @@ const Footer = () => {
             <ul className="space-y-3">
               {services.map((service) => (
                 <li key={service}>
-                  <Link
+                  <a
                     href="#"
                     className="text-gray-400 hover:text-white transition-colors duration-300 text-sm flex items-center group"
                   >
                     <span className="w-1 h-1 bg-blue-500 rounded-full mr-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
                     {service}
-                  </Link>
+                  </a>
                 </li>
               ))}
             </ul>
@@ -193,13 +192,13 @@ const Footer = () => {
             </div>
             <div className="flex space-x-6 text-sm">
               {['Privacy Policy', 'Terms of Service', 'Sitemap'].map((item) => (
-                <Link 
+                <a 
                   key={item} 
                   href="#" 
                   className="text-gray-400 hover:text-white transition-colors duration-300 text-sm"
                 >
                   {item}
-                </Link>
+                </a>
               ))}
             </div>
           </div>
