@@ -9,10 +9,11 @@ import './styles/components.css';
 import './styles/animations.css';
 
 function App() {
+  const basename = window.location.hostname === 'localhost' ? '/realEstateOctopus' : '';
   return (
     <ThemeProvider>
       <AuthProvider>
-        <Router  basename="/realEstateOctopus">
+        <Router basename={basename}>
           <div className="App">
             <AppRouter />
           </div>
