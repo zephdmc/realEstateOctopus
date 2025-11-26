@@ -88,9 +88,9 @@ const Navbar = () => {
             <div className="flex-1 overflow-hidden relative">
               <div className="flex animate-[marquee_25s_linear_infinite] whitespace-nowrap hover:animate-pause">
                 {contactInfo.map((contact, index) => (
-                  <a
+                  <Link
                     key={contact.type}
-                    href={contact.href}
+                    to={contact.href}
                     className="inline-flex items-center space-x-2 mx-4 text-gray-600 hover:text-blue-600 transition duration-200 flex-shrink-0 group"
                   >
                     <div className="bg-blue-100 p-1 rounded group-hover:bg-blue-200 transition duration-200">
@@ -99,13 +99,13 @@ const Navbar = () => {
                       </div>
                     </div>
                     <span className="text-xs font-medium">{contact.value}</span>
-                  </a>
+                  </Link>
                 ))}
                 {/* Duplicate for seamless loop */}
                 {contactInfo.map((contact, index) => (
-                  <a
+                  <Link
                     key={`${contact.type}-dup`}
-                    href={contact.href}
+                    to={contact.href}
                     className="inline-flex items-center space-x-2 mx-4 text-gray-600 hover:text-blue-600 transition duration-200 flex-shrink-0 group"
                   >
                     <div className="bg-blue-100 p-1 rounded group-hover:bg-blue-200 transition duration-200">
@@ -114,7 +114,7 @@ const Navbar = () => {
                       </div>
                     </div>
                     <span className="text-xs font-medium">{contact.value}</span>
-                  </a>
+                  </Link>
                 ))}
               </div>
             </div>
@@ -134,13 +134,13 @@ const Navbar = () => {
 
           {/* Desktop Call to Action */}
           <div className="hidden md:block">
-            <a
-              href="/list-property"
+            <Link
+              to="/list-property"
               className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-all duration-200 font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center space-x-2"
             >
               <FaPlusCircle className="w-4 h-4" />
               <span>List Your Property</span>
-            </a>
+            </Link>
           </div>
         </div>
 
@@ -149,9 +149,9 @@ const Navbar = () => {
           <div className="md:hidden py-4 border-t border-gray-200 bg-white">
             <div className="flex flex-col space-y-3">
               {navigation.map((item) => (
-                <a
+                <Link
                   key={item.name}
-                  href={item.href}
+                  to={item.href}
                   className={`px-4 py-3 text-base font-medium transition-all duration-200 rounded-lg ${
                     item.current
                       ? 'text-blue-600 bg-blue-50 border-l-4 border-blue-600'
@@ -160,16 +160,16 @@ const Navbar = () => {
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   {item.name}
-                </a>
+                </Link>
               ))}
 
               {/* Contact Info in Mobile Menu */}
               <div className="pt-4 border-t border-gray-200">
                 <div className="space-y-3">
                   {contactInfo.map((contact) => (
-                    <a
+                    <Link
                       key={contact.type}
-                      href={contact.href}
+                      to={contact.href}
                       className="flex items-center space-x-3 px-4 py-2 text-gray-700 hover:text-blue-600 transition duration-200 group"
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
@@ -179,7 +179,7 @@ const Navbar = () => {
                         </div>
                       </div>
                       <span className="text-sm font-medium">{contact.value}</span>
-                    </a>
+                    </Link>
                   ))}
                 </div>
               </div>

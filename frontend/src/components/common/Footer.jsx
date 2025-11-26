@@ -5,9 +5,9 @@ const Footer = () => {
 
   const quickLinks = [
     { name: 'Home', href: '/' },
-    { name: 'Properties', href: '/realEstateOctopus/properties' },
-    { name: 'About', href: '/realEstateOctopus/about' },
-    { name: 'Contact', href: '/realEstateOctopus/contact' }
+    { name: 'Properties', href: '/properties' },
+    { name: 'About', href: '/about' },
+    { name: 'Contact', href: '/contact' }
   ];
 
   const services = [
@@ -108,14 +108,14 @@ const Footer = () => {
             </p>
             <div className="flex space-x-3">
               {socialLinks.map((social) => (
-                <a
+                <Link
                   key={social.name}
                   href={social.href}
                   className="w-8 h-8 bg-gray-800 rounded-lg flex items-center justify-center hover:bg-blue-600 transition-all duration-300 hover:shadow-lg"
                   title={social.name}
                 >
                   {social.icon}
-                </a>
+                </Link>
               ))}
             </div>
           </div>
@@ -128,13 +128,13 @@ const Footer = () => {
             <ul className="space-y-3">
               {quickLinks.map((link) => (
                 <li key={link.name}>
-                  <a
+                  <Link
                     href={link.href}
                     className="text-gray-400 hover:text-white transition-colors duration-300 text-sm flex items-center group"
                   >
                     <span className="w-1 h-1 bg-blue-500 rounded-full mr-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
                     {link.name}
-                  </a>
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -148,13 +148,13 @@ const Footer = () => {
             <ul className="space-y-3">
               {services.map((service) => (
                 <li key={service}>
-                  <a
+                  <Link
                     href="#"
                     className="text-gray-400 hover:text-white transition-colors duration-300 text-sm flex items-center group"
                   >
                     <span className="w-1 h-1 bg-blue-500 rounded-full mr-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
                     {service}
-                  </a>
+                  </Link>
                 </li>
               ))}
             </ul>

@@ -1,12 +1,8 @@
-
-
-
 import React from 'react';
 import { HashRouter as Router } from 'react-router-dom'; // ← Change this
 import AppRouter from './router';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
-
 // Import global styles
 import './styles/globals.css';
 import './styles/components.css';
