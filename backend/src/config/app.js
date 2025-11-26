@@ -25,7 +25,9 @@ const appConfig = {
         origins: [
           process.env.FRONTEND_URL,
           'http://localhost:3000',
-          'http://localhost:5173'
+          'http://localhost:5173',
+          'https://zephdmc.github.io',
+          'https://zephdmc.github.io/realEstateOctopus'
         ]
       },
   
