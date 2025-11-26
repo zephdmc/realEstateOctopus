@@ -11,6 +11,8 @@ export const corsOptions = {
       'http://localhost:3000',
       'http://localhost:5173',
       'https://eliteproperties.vercel.app'
+       'https://zephdmc.github.io',
+        'https://zephdmc.github.io/realEstateOctopus',
     ];
 
     if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV === 'development') {
