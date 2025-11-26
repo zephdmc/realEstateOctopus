@@ -16,7 +16,7 @@ yarn-error.log*
 logs/
 
 # Build outputs
-dist/
+
 build/
 .out/
 .next/

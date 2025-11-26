@@ -16,7 +16,7 @@ function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <Router>
+        <Router  basename="/realEstateOctopus">
           <div className="App">
             <AppRouter />
           </div>
