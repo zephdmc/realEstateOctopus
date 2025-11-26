@@ -7,18 +7,20 @@ import {
   FaTimes,
   FaPlusCircle
 } from 'react-icons/fa';
+import { Link, useLocation } from 'react-router-dom';
 
 const Navbar = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isScrolling, setIsScrolling] = useState(false);
+  const location = useLocation();
 
   const navigation = [
-    { name: 'Home', href: '/', current: true },
-    { name: 'Properties', href: '/properties', current: false },
-    { name: 'Services', href: '/services', current: false },
-    { name: 'About', href: '/about', current: false },
-    { name: 'Blog', href: '/blog', current: false },
-    { name: 'Contact', href: '/contact', current: false }
+    { name: 'Home', href: '/', current: location.pathname === '/' },
+    { name: 'Properties', href: '/properties', current: location.pathname === '/properties' },
+    { name: 'Services', href: '/services', current: location.pathname === '/services' },
+    { name: 'About', href: '/about', current: location.pathname === '/about' },
+    { name: 'Blog', href: '/blog', current: location.pathname === '/blog' },
+    { name: 'Contact', href: '/contact', current: location.pathname === '/contact' }
   ];
 
   const contactInfo = [
@@ -67,17 +69,18 @@ const Navbar = () => {
           {/* Desktop Navigation */}
           <div className="hidden md:flex space-x-8">
             {navigation.map((item) => (
-              <a
+              <Link
                 key={item.name}
-                href={item.href}
+                to={item.href}
                 className={`px-3 py-2 text-sm font-medium transition-all duration-200 ${
                   item.current
                     ? 'text-blue-600 border-b-2 border-blue-600 font-semibold'
                     : 'text-gray-700 hover:text-blue-600 hover:border-b-2 hover:border-blue-300'
                 }`}
+                onClick={() => setIsMobileMenuOpen(false)}
               >
                 {item.name}
-              </a>
+              </Link>
             ))}
           </div>
 
@@ -133,13 +136,13 @@ const Navbar = () => {
 
           {/* Desktop Call to Action */}
           <div className="hidden md:block">
-            <a
-              href="/list-property"
+            <Link
+              to="/list-property"
               className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-all duration-200 font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center space-x-2"
             >
               <FaPlusCircle className="w-4 h-4" />
               <span>List Your Property</span>
-            </a>
+            </Link>
           </div>
         </div>
 
@@ -148,9 +151,9 @@ const Navbar = () => {
           <div className="md:hidden py-4 border-t border-gray-200 bg-white">
             <div className="flex flex-col space-y-3">
               {navigation.map((item) => (
-                <a
+                <Link
                   key={item.name}
-                  href={item.href}
+                  to={item.href}
                   className={`px-4 py-3 text-base font-medium transition-all duration-200 rounded-lg ${
                     item.current
                       ? 'text-blue-600 bg-blue-50 border-l-4 border-blue-600'
@@ -159,7 +162,7 @@ const Navbar = () => {
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   {item.name}
-                </a>
+                </Link>
               ))}
 
               {/* Contact Info in Mobile Menu */}
@@ -183,14 +186,14 @@ const Navbar = () => {
                 </div>
               </div>
 
-              <a
-                href="/list-property"
+              <Link
+                to="/list-property"
                 className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-all duration-200 font-medium text-center mt-4 flex items-center justify-center space-x-2 shadow-lg"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 <FaPlusCircle className="w-5 h-5" />
                 <span>List Your Property</span>
-              </a>
+              </Link>
             </div>
           </div>
         )}
