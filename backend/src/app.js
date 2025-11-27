@@ -7,7 +7,6 @@ import cookieParser from 'cookie-parser';
 
 // Import configurations
 import appConfig from './config/app.js';
-import { testCors } from './middleware/cors.js';
 
 // Import middleware
 import { 
@@ -38,46 +37,68 @@ class App {
     // 🚨 CRITICAL: CORS MUST BE ABSOLUTELY FIRST
     console.log('🔧 Initializing CORS middleware...');
     
-    // Direct CORS configuration - no external functions
+    // Define allowed origins
+    const allowedOrigins = [
+      'https://zephdmc.github.io',
+      'https://zephdmc.github.io/realEstateOctopus',
+      'http://localhost:3000',
+      'http://localhost:5173',
+      'https://eliteproperties.vercel.app'
+    ];
+
+    // 1. Primary CORS middleware with dynamic origin checking
     this.app.use(cors({
-      origin: [
-        'https://zephdmc.github.io',
-        'https://zephdmc.github.io/realEstateOctopus',
-        'http://localhost:3000',
-        'http://localhost:5173',
-        'https://eliteproperties.vercel.app'
-      ],
+      origin: (origin, callback) => {
+        // Allow requests with no origin (server-to-server, mobile apps, etc.)
+        if (!origin) {
+          console.log('🌐 CORS: No origin (server-to-server request)');
+          return callback(null, true);
+        }
+
+        console.log(`🔍 CORS checking origin: ${origin}`);
+
+        // Check if origin is allowed
+        const isAllowed = allowedOrigins.some(allowedOrigin => 
+          origin === allowedOrigin || 
+          origin.startsWith('https://zephdmc.github.io')
+        );
+
+        if (isAllowed || !process.env.NODE_ENV || process.env.NODE_ENV === 'development') {
+          console.log(`✅ CORS: Allowed origin - ${origin}`);
+          callback(null, true);
+        } else {
+          console.log(`❌ CORS: Blocked origin - ${origin}`);
+          callback(new Error(`Not allowed by CORS. Origin: ${origin}`));
+        }
+      },
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin'],
-      optionsSuccessStatus: 200
+      allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With'],
+      optionsSuccessStatus: 200,
+      maxAge: 86400 // 24 hours
     }));
 
-    // Handle preflight requests globally
+    // 2. Handle preflight requests globally
     this.app.options('*', cors());
 
-    // Manual CORS headers as final backup
+    // 3. Manual CORS headers as final backup
     this.app.use((req, res, next) => {
       const origin = req.headers.origin;
-      const allowedOrigins = [
-        'https://zephdmc.github.io',
-        'https://zephdmc.github.io/realEstateOctopus',
-        'http://localhost:3000',
-        'http://localhost:5173',
-        'https://eliteproperties.vercel.app'
-      ];
-
+      
+      // Set CORS headers for all responses
       if (origin && allowedOrigins.includes(origin)) {
         res.header('Access-Control-Allow-Origin', origin);
       }
       res.header('Access-Control-Allow-Credentials', 'true');
       res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-      res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, Origin');
+      res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, Origin, X-Requested-With');
 
+      // Handle preflight requests
       if (req.method === 'OPTIONS') {
-        console.log('🛬 Handling preflight request for:', req.path);
+        console.log('🛬 Handling preflight request for:', req.path, 'from:', origin);
         return res.status(200).end();
       }
+
       next();
     });
 
@@ -122,20 +143,20 @@ class App {
     this.app.use('/uploads', express.static(appConfig.upload.directory));
     this.app.use('/public', express.static('public'));
 
-    // Simple test endpoint (no external imports)
+    // CORS test endpoint
     this.app.get('/test-cors', (req, res) => {
+      console.log('🔍 CORS Test - Headers:', {
+        origin: req.headers.origin,
+        'user-agent': req.headers['user-agent']?.substring(0, 50)
+      });
+
       res.json({
         success: true,
-        message: 'CORS test successful!',
+        message: 'CORS is working! 🎉',
         yourOrigin: req.headers.origin,
         timestamp: new Date().toISOString(),
-        allowedOrigins: [
-          'https://zephdmc.github.io',
-          'https://zephdmc.github.io/realEstateOctopus',
-          'http://localhost:3000',
-          'http://localhost:5173',
-          'https://eliteproperties.vercel.app'
-        ]
+        environment: process.env.NODE_ENV,
+        allowedOrigins: allowedOrigins
       });
     });
 
