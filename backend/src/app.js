@@ -7,7 +7,7 @@ import cookieParser from 'cookie-parser';
 
 // Import configurations
 import appConfig from './config/app.js';
-import { corsOptions, configureCors } from './middleware/cors.js';
+import { configureCors, emergencyCors, testCors } from './middleware/cors.js';
 
 // Import middleware
 import { 
@@ -17,7 +17,6 @@ import {
 } from './middleware/rateLimit.js';
 import { requestLogger } from './utils/logger.js';
 import { sanitizeInput } from './middleware/validation.js';
-import { handleUploadError } from './middleware/upload.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 
 // Import routes
@@ -36,11 +35,16 @@ class App {
 
   // Initialize all middlewares
   initializeMiddlewares() {
-    // ✅ CORS middleware - MUST BE FIRST (before other middleware)
-    configureCors(this.app);
+    // 🚨 TEMPORARY: Use emergency CORS to fix the issue immediately
+    console.log('🚨 Applying emergency CORS configuration for GitHub Pages');
+    emergencyCors(this.app);
 
-    // Security middleware
-    this.app.use(helmet(appConfig.security.helmet.options));
+    // Security middleware - configure helmet to be CORS compatible
+    this.app.use(helmet({
+      crossOriginResourcePolicy: { policy: "cross-origin" },
+      // Temporarily disable some helmet features for CORS compatibility
+      contentSecurityPolicy: false
+    }));
 
     // Compression middleware
     if (appConfig.api.compression.enabled) {
@@ -76,8 +80,11 @@ class App {
     this.app.use('/uploads', express.static(appConfig.upload.directory));
     this.app.use('/public', express.static('public'));
 
-    // Health check endpoint
+    // Health check endpoint with CORS
     this.app.get('/health', this.healthCheck);
+    
+    // CORS test endpoint
+    this.app.get('/api/test-cors', testCors);
   }
 
   // Apply rate limiting based on routes
@@ -128,9 +135,6 @@ class App {
 
   // Initialize error handling
   initializeErrorHandling() {
-    // Upload error handling
-    // this.app.use(handleUploadError);
-
     // Global error handler
     this.app.use(errorHandler);
 
@@ -176,7 +180,17 @@ class App {
       environment: this.environment,
       version: appConfig.app.version,
       memory: process.memoryUsage(),
-      database: 'unknown' // Will be updated after database connection
+      database: 'unknown', // Will be updated after database connection
+      cors: {
+        yourOrigin: req.headers.origin,
+        allowedOrigins: [
+          'https://zephdmc.github.io',
+          'https://zephdmc.github.io/realEstateOctopus',
+          'http://localhost:3000',
+          'http://localhost:5173',
+          'https://eliteproperties.vercel.app'
+        ]
+      }
     };
 
     // Add database health if available
@@ -241,6 +255,16 @@ class App {
       authentication: {
         type: 'Bearer Token',
         header: 'Authorization: Bearer <token>'
+      },
+      cors: {
+        note: 'CORS is configured for GitHub Pages and local development',
+        allowedOrigins: [
+          'https://zephdmc.github.io',
+          'https://zephdmc.github.io/realEstateOctopus',
+          'http://localhost:3000',
+          'http://localhost:5173',
+          'https://eliteproperties.vercel.app'
+        ]
       }
     };
 
@@ -310,7 +334,14 @@ class App {
 📍 Environment: ${this.environment}
 📍 Port: ${this.port}
 📍 Health: http://localhost:${this.port}/health
+📍 CORS Test: http://localhost:${this.port}/api/test-cors
 ${appConfig.api.docs.enabled ? `📍 API Docs: http://localhost:${this.port}${appConfig.api.docs.path}` : ''}
+📍 Allowed Origins: 
+   - https://zephdmc.github.io
+   - https://zephdmc.github.io/realEstateOctopus
+   - http://localhost:3000
+   - http://localhost:5173
+   - https://eliteproperties.vercel.app
       `);
     });
 
