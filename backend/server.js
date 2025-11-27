@@ -6,13 +6,12 @@ import { logInfo, logError } from './src/utils/logger.js';
 // Load environment variables FIRST
 dotenv.config();
 
-// Start the application
 const startServer = async () => {
   try {
     // Connect to database
-    const dbConnection = await databaseConfig.connectDatabase();
+    const dbConnection = await databaseConfig.connect(); // connect() returns mongoose.connection
 
-    // ✅ Explicitly log successful connection
+    // ✅ Log successful connection
     if (dbConnection.readyState === 1) {
       logInfo('✅ MongoDB connected successfully');
     } else {
@@ -23,14 +22,12 @@ const startServer = async () => {
     // Set database connection in app instance
     app.dbConnection = dbConnection;
 
-    // Check database health and set status
-    const dbHealth = databaseConfig.checkDatabaseHealth();
+    // Check database health (simple check)
+    const dbHealth = dbConnection.readyState === 1 ? 'connected' : 'disconnected';
     app.setDatabaseHealth(dbHealth);
 
-    // Start the server
+    // Start the Express server
     const server = app.start();
-
-    // Store server reference for graceful shutdown
     app.server = server;
 
     logInfo('✅ Application started successfully');
