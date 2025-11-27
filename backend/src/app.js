@@ -9,7 +9,7 @@ import appConfig from './config/app.js';
 
 // ⭐ Official CORS config
 // import { configureCors } from './config/corsOptions.js';
-import { corsOptions, configureCors } from './middleware/cors.js';
+import { configureCors } from './middleware/cors.js';
 
 // Middleware
 import {
