@@ -3,7 +3,7 @@ import { getAuth } from 'firebase/auth';
 
 // In your api.js, update the baseURL:
 const api = axios.create({
-  baseURL: 'https://corsproxy.io/?' + encodeURIComponent('https://realestateoctopus-production.up.railway.app/api'),
+  baseURL: 'https://corsproxy.io/?' + encodeURIComponent('https://realestateoctopus.onrender.com/api'),
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
