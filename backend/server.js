@@ -1,10 +1,9 @@
 import dotenv from 'dotenv';
 import app from './src/app.js';
-import appConfig from './src/config/app.js'; // ✅ Import appConfig
 import { connectDatabase, checkDatabaseHealth } from './src/utils/database.js';
 import { logInfo, logError } from './src/utils/logger.js';
 
-// Load environment variables first
+// Load environment variables FIRST
 dotenv.config();
 
 // Start the application
@@ -13,18 +12,28 @@ const startServer = async () => {
     // Connect to database
     const dbConnection = await connectDatabase();
 
+    // ✅ Explicitly log successful connection
+    if (dbConnection.readyState === 1) {
+      logInfo('✅ MongoDB connected successfully');
+    } else {
+      logError('❌ MongoDB connection not established, current state:', dbConnection.readyState);
+    }
+
     // Set database connection in app instance
     app.dbConnection = dbConnection;
 
     // Check database health and set status
     const dbHealth = await checkDatabaseHealth();
-    if (app.setDatabaseHealth) app.setDatabaseHealth(dbHealth);
+    app.setDatabaseHealth(dbHealth);
 
     // Start the server
     const server = app.start();
+
+    // Store server reference for graceful shutdown
     app.server = server;
 
-    logInfo(`✅ ${appConfig.app.name} started successfully on port ${app.port || process.env.PORT}`);
+    logInfo('✅ Application started successfully');
+
   } catch (error) {
     logError('❌ Failed to start application:', error);
     process.exit(1);
@@ -34,4 +43,5 @@ const startServer = async () => {
 // Start the server
 startServer();
 
+// Export for testing
 export { app };
