@@ -22,7 +22,7 @@ import Settings from './pages/admin/Settings';
 import AdminLayout from './components/layout/AdminLayout';
 import { useAuth } from '../src/contexts/AuthContext';
 
-// Protected Route Component with Debugging
+// Protected Route Component with Debugging - FIXED VERSION
 const ProtectedRoute = ({ children, requireAdmin = false }) => {
   const { isAuthenticated, isAdmin, loading, initialized } = useAuth();
   const location = useLocation();
@@ -31,7 +31,8 @@ const ProtectedRoute = ({ children, requireAdmin = false }) => {
     path: location.pathname,
     requireAdmin,
     isAuthenticated,
-    isAdmin: isAdmin(),
+    isAdmin: typeof isAdmin === 'function' ? isAdmin() : isAdmin,
+    isAdminType: typeof isAdmin,
     loading,
     initialized,
     timestamp: new Date().toISOString()
@@ -49,22 +50,28 @@ const ProtectedRoute = ({ children, requireAdmin = false }) => {
 
   if (!isAuthenticated) {
     console.log('❌ ProtectedRoute: Not authenticated, redirecting to home');
-    return <Navigate to="/" replace />;
+    return <Navigate to="/" replace state={{ from: location }} />;
   }
 
-  if (requireAdmin && !isAdmin()) {
+  // 🔥 FIXED: Handle both function and boolean isAdmin
+  const userIsAdmin = typeof isAdmin === 'function' ? isAdmin() : isAdmin;
+  
+  if (requireAdmin && !userIsAdmin) {
     console.log('🚫 ProtectedRoute: Not admin, redirecting to home');
-    return <Navigate to="/" replace />;
+    return <Navigate to="/" replace state={{ from: location }} />;
   }
 
   console.log('✅ ProtectedRoute: Access granted - rendering children');
   return children;
 };
 
-// Auth Debug Component
+// Auth Debug Component - FIXED VERSION
 const AuthDebug = () => {
   const auth = useAuth();
   const location = useLocation();
+  
+  // 🔥 FIXED: Handle both function and boolean isAdmin
+  const userIsAdmin = typeof auth.isAdmin === 'function' ? auth.isAdmin() : auth.isAdmin;
   
   return (
     <div className="p-6">
@@ -83,10 +90,12 @@ const AuthDebug = () => {
               emailVerified: auth.user.emailVerified
             } : 'No user',
             isAuthenticated: auth.isAuthenticated,
-            isAdmin: auth.isAdmin(),
+            isAdmin: userIsAdmin,
+            isAdminType: typeof auth.isAdmin,
             loading: auth.loading,
             initialized: auth.initialized,
-            userRole: auth.userRole
+            userRole: auth.userRole,
+            userEmail: auth.userEmail
           }, null, 2)}
         </pre>
         
@@ -96,9 +105,47 @@ const AuthDebug = () => {
             <p>{auth.isAuthenticated ? '✅ Authenticated' : '❌ Not Authenticated'}</p>
           </div>
           
-          <div className={`p-4 rounded-lg ${auth.isAdmin() ? 'bg-green-100 border border-green-300' : 'bg-red-100 border border-red-300'}`}>
+          <div className={`p-4 rounded-lg ${userIsAdmin ? 'bg-green-100 border border-green-300' : 'bg-red-100 border border-red-300'}`}>
             <h3 className="font-semibold">Admin Status</h3>
-            <p>{auth.isAdmin() ? '✅ Is Admin' : '❌ Not Admin'}</p>
+            <p>{userIsAdmin ? '✅ Is Admin' : '❌ Not Admin'}</p>
+            <p className="text-sm text-gray-600 mt-1">
+              Type: {typeof auth.isAdmin}
+            </p>
+          </div>
+        </div>
+
+        {/* 🔥 ADDED: User Info Section */}
+        <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+          <h3 className="font-semibold text-blue-900 mb-2">User Information</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+            <div>
+              <strong>Email:</strong> {auth.userEmail || 'No email'}
+            </div>
+            <div>
+              <strong>User ID:</strong> {auth.userId || 'No ID'}
+            </div>
+            <div>
+              <strong>Role:</strong> {auth.userRole || 'No role'}
+            </div>
+            <div>
+              <strong>Email Verified:</strong> {auth.isEmailVerified ? '✅' : '❌'}
+            </div>
+          </div>
+        </div>
+
+        {/* 🔥 ADDED: Admin Access Test */}
+        <div className="mt-6 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+          <h3 className="font-semibold text-yellow-900 mb-2">Admin Access Test</h3>
+          <div className="space-y-2">
+            <button
+              onClick={() => window.location.href = '/admin/dashboard'}
+              className="bg-yellow-600 text-white px-4 py-2 rounded hover:bg-yellow-700 transition duration-200"
+            >
+              Test Admin Dashboard Access
+            </button>
+            <p className="text-sm text-yellow-700">
+              Current admin status: <strong>{userIsAdmin ? 'ADMIN' : 'NOT ADMIN'}</strong>
+            </p>
           </div>
         </div>
       </div>
