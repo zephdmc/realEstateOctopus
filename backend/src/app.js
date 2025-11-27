@@ -36,6 +36,9 @@ class App {
 
   // Initialize all middlewares
   initializeMiddlewares() {
+    // ✅ CORS middleware - MUST BE FIRST (before other middleware)
+    configureCors(this.app);
+
     // Security middleware
     this.app.use(helmet(appConfig.security.helmet.options));
 
@@ -44,11 +47,6 @@ class App {
       this.app.use(compression({
         threshold: appConfig.api.compression.threshold
       }));
-    }
-
-    // CORS middleware
-    if (appConfig.security.cors.enabled) {
-      configureCors(this.app);
     }
 
     // Rate limiting
