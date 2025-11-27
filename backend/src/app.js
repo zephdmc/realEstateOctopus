@@ -7,16 +7,17 @@ import cookieParser from 'cookie-parser';
 // Import configs
 import appConfig from './config/app.js';
 
-// ⭐ Official CORS config
-// import { configureCors } from './config/corsOptions.js';
+// CORS
 import { configureCors } from './middleware/cors.js';
 
-// Middleware
+// Rate limiters
 import {
   generalLimiter,
   authLimiter,
   contactLimiter
 } from './middleware/rateLimit.js';
+
+// Middleware
 import { requestLogger } from './utils/logger.js';
 import { sanitizeInput } from './middleware/validation.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
@@ -38,10 +39,13 @@ class App {
   initializeMiddlewares() {
     console.log("🚀 Initializing Middlewares...");
 
-    // ⭐ IMPORTANT: CORS MUST BE FIRST BEFORE ANYTHING ELSE!
+    // ⭐ 1️⃣ CORS FIRST
     configureCors(this.app);
 
-    // ⭐ Helmet (CORS-compatible)
+    // Preflight handling for all routes
+    this.app.options('*', (req, res) => res.sendStatus(204));
+
+    // ⭐ 2️⃣ Security & compression
     this.app.use(
       helmet({
         crossOriginResourcePolicy: false,
@@ -49,33 +53,22 @@ class App {
       })
     );
 
-    // Compression
     if (appConfig.api.compression.enabled) {
       this.app.use(
-        compression({
-          threshold: appConfig.api.compression.threshold,
-        })
+        compression({ threshold: appConfig.api.compression.threshold })
       );
     }
 
-    // Rate limiting
+    // ⭐ 3️⃣ Rate limiters (skip OPTIONS)
     if (appConfig.security.rateLimit.enabled) {
       this.applyRateLimiting();
     }
 
-    // Body parsing
-    this.app.use(
-      express.json({
-        limit: appConfig.upload.maxFileSize,
-      })
-    );
-    this.app.use(
-      express.urlencoded({
-        extended: true,
-        limit: appConfig.upload.maxFileSize,
-      })
-    );
+    // ⭐ 4️⃣ Body parsing
+    this.app.use(express.json({ limit: appConfig.upload.maxFileSize }));
+    this.app.use(express.urlencoded({ extended: true, limit: appConfig.upload.maxFileSize }));
 
+    // Cookies
     this.app.use(cookieParser());
 
     // Logging
@@ -88,7 +81,7 @@ class App {
     this.app.use('/uploads', express.static(appConfig.upload.directory));
     this.app.use('/public', express.static('public'));
 
-    // CORS Debug Endpoint
+    // CORS Debug endpoints
     this.app.get('/test-cors', (req, res) => {
       res.json({
         success: true,
@@ -111,9 +104,21 @@ class App {
   }
 
   applyRateLimiting() {
-    this.app.use(generalLimiter);
-    this.app.use('/api/auth', authLimiter);
-    this.app.use('/api/contact', contactLimiter);
+    const skipOptions = (req) => req.method === 'OPTIONS';
+    this.app.use((req, res, next) => {
+      if (skipOptions(req)) return next();
+      return generalLimiter(req, res, next);
+    });
+
+    this.app.use('/api/auth', (req, res, next) => {
+      if (skipOptions(req)) return next();
+      return authLimiter(req, res, next);
+    });
+
+    this.app.use('/api/contact', (req, res, next) => {
+      if (skipOptions(req)) return next();
+      return contactLimiter(req, res, next);
+    });
   }
 
   initializeLogging() {
@@ -123,9 +128,7 @@ class App {
       this.app.use(morgan('dev'));
     } else {
       this.app.use(
-        morgan('combined', {
-          skip: (req, res) => res.statusCode < 400,
-        })
+        morgan('combined', { skip: (req, res) => res.statusCode < 400 })
       );
     }
   }
@@ -191,14 +194,12 @@ class App {
 
   start() {
     this.server = this.app.listen(this.port, () => {
-      console.log(`
-🚀 ${appConfig.app.name} running!
+      console.log(`🚀 ${appConfig.app.name} running!
 🌍 ENV: ${this.environment}
 🔌 PORT: ${this.port}
 🩺 Health: /health
 🛂 CORS Test: /test-cors
-📡 API Test: /api/test-cors
-      `);
+📡 API Test: /api/test-cors`);
     });
 
     return this.server;
