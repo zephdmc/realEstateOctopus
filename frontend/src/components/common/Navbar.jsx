@@ -5,14 +5,17 @@ import {
   FaGlobe, 
   FaBars, 
   FaTimes,
-  FaPlusCircle
+  FaPlusCircle,
+  FaTachometerAlt
 } from 'react-icons/fa';
 import { Link, useLocation } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 
 const Navbar = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isScrolling, setIsScrolling] = useState(false);
   const location = useLocation();
+  const { isAuthenticated, isAdmin } = useAuth();
 
   const navigation = [
     { name: 'Home', href: '/', current: location.pathname === '/' },
@@ -82,6 +85,22 @@ const Navbar = () => {
                 {item.name}
               </Link>
             ))}
+            
+            {/* Admin Dashboard Link - Only show if user is authenticated and admin */}
+            {isAuthenticated && isAdmin() && (
+              <Link
+                to="/admin/dashboard"
+                className={`px-3 py-2 text-sm font-medium transition-all duration-200 flex items-center space-x-1 ${
+                  location.pathname.startsWith('/admin')
+                    ? 'text-purple-600 border-b-2 border-purple-600 font-semibold'
+                    : 'text-purple-700 hover:text-purple-600 hover:border-b-2 hover:border-purple-300'
+                }`}
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                <FaTachometerAlt className="w-4 h-4" />
+                <span>Dashboard</span>
+              </Link>
+            )}
           </div>
 
           {/* Mobile Contact Info + Menu Button */}
@@ -135,7 +154,18 @@ const Navbar = () => {
           </div>
 
           {/* Desktop Call to Action */}
-          <div className="hidden md:block">
+          <div className="hidden md:flex items-center space-x-4">
+            {/* Admin Dashboard Link in CTA area - Only show if admin */}
+            {isAuthenticated && isAdmin() && (
+              <Link
+                to="/admin/dashboard"
+                className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-all duration-200 font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center space-x-2"
+              >
+                <FaTachometerAlt className="w-4 h-4" />
+                <span>Dashboard</span>
+              </Link>
+            )}
+            
             <Link
               to="/list-property"
               className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-all duration-200 font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center space-x-2"
@@ -164,6 +194,22 @@ const Navbar = () => {
                   {item.name}
                 </Link>
               ))}
+
+              {/* Admin Dashboard Link in Mobile Menu - Only show if admin */}
+              {isAuthenticated && isAdmin() && (
+                <Link
+                  to="/admin/dashboard"
+                  className={`px-4 py-3 text-base font-medium transition-all duration-200 rounded-lg flex items-center space-x-2 ${
+                    location.pathname.startsWith('/admin')
+                      ? 'text-purple-600 bg-purple-50 border-l-4 border-purple-600'
+                      : 'text-purple-700 hover:text-purple-600 hover:bg-purple-50 hover:border-l-4 hover:border-purple-300'
+                  }`}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <FaTachometerAlt className="w-4 h-4" />
+                  <span>Admin Dashboard</span>
+                </Link>
+              )}
 
               {/* Contact Info in Mobile Menu */}
               <div className="pt-4 border-t border-gray-200">
