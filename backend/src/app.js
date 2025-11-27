@@ -11,11 +11,7 @@ import appConfig from './config/app.js';
 import { configureCors } from './middleware/cors.js';
 
 // Rate limiters
-import {
-  generalLimiter,
-  authLimiter,
-  contactLimiter
-} from './middleware/rateLimit.js';
+import { generalLimiter, authLimiter, contactLimiter } from './middleware/rateLimit.js';
 
 // Middleware
 import { requestLogger } from './utils/logger.js';
@@ -28,8 +24,10 @@ import apiRoutes from './routes/index.js';
 class App {
   constructor() {
     this.app = express();
-    this.port = appConfig.app.port;
     this.environment = appConfig.app.environment;
+
+    // Use dynamic port from environment (Railway / Heroku)
+    this.port = process.env.PORT || appConfig.app.port || 5000;
 
     this.initializeMiddlewares();
     this.initializeRoutes();
@@ -42,7 +40,7 @@ class App {
     // ⭐ 1️⃣ CORS FIRST
     configureCors(this.app);
 
-    // Preflight handling for all routes
+    // Preflight for all routes
     this.app.options('*', (req, res) => res.sendStatus(204));
 
     // ⭐ 2️⃣ Security & compression
@@ -54,9 +52,7 @@ class App {
     );
 
     if (appConfig.api.compression.enabled) {
-      this.app.use(
-        compression({ threshold: appConfig.api.compression.threshold })
-      );
+      this.app.use(compression({ threshold: appConfig.api.compression.threshold }));
     }
 
     // ⭐ 3️⃣ Rate limiters (skip OPTIONS)
@@ -81,7 +77,7 @@ class App {
     this.app.use('/uploads', express.static(appConfig.upload.directory));
     this.app.use('/public', express.static('public'));
 
-    // CORS Debug endpoints
+    // Debug endpoints
     this.app.get('/test-cors', (req, res) => {
       res.json({
         success: true,
@@ -105,6 +101,7 @@ class App {
 
   applyRateLimiting() {
     const skipOptions = (req) => req.method === 'OPTIONS';
+
     this.app.use((req, res, next) => {
       if (skipOptions(req)) return next();
       return generalLimiter(req, res, next);
@@ -149,25 +146,23 @@ class App {
   }
 
   initializeProcessHandlers() {
+    const shutdown = () => {
+      console.log("⚡ Shutting down gracefully...");
+      if (this.server) this.server.close(() => process.exit(0));
+    };
+
     process.on("uncaughtException", (err) => {
       console.error("💥 UNCAUGHT EXCEPTION:", err);
-      process.exit(1);
+      shutdown();
     });
 
     process.on("unhandledRejection", (reason) => {
       console.error("💥 UNHANDLED REJECTION:", reason);
-      process.exit(1);
+      shutdown();
     });
 
-    process.on("SIGTERM", () => {
-      console.log("SIGTERM Received. Shutting down gracefully...");
-      this.shutdown();
-    });
-
-    process.on("SIGINT", () => {
-      console.log("SIGINT Received. Shutting down gracefully...");
-      this.shutdown();
-    });
+    process.on("SIGTERM", shutdown);
+    process.on("SIGINT", shutdown);
   }
 
   healthCheck = (req, res) => {
@@ -188,18 +183,14 @@ class App {
     });
   };
 
-  async shutdown() {
-    if (this.server) this.server.close();
-  }
-
   start() {
     this.server = this.app.listen(this.port, () => {
-      console.log(`🚀 ${appConfig.app.name} running!
-🌍 ENV: ${this.environment}
-🔌 PORT: ${this.port}
-🩺 Health: /health
-🛂 CORS Test: /test-cors
-📡 API Test: /api/test-cors`);
+      console.log(`🚀 ${appConfig.app.name} running!`);
+      console.log(`🌍 ENV: ${this.environment}`);
+      console.log(`🔌 PORT: ${this.port}`);
+      console.log(`🩺 Health: /health`);
+      console.log(`🛂 CORS Test: /test-cors`);
+      console.log(`📡 API Test: /api/test-cors`);
     });
 
     return this.server;
