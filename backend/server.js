@@ -11,7 +11,14 @@ const startServer = async () => {
   try {
     // Connect to database
     const dbConnection = await connectDatabase();
-    
+
+    // ✅ Explicitly log successful connection
+    if (dbConnection.readyState === 1) {
+      logInfo('✅ MongoDB connected successfully');
+    } else {
+      logError('❌ MongoDB connection not established, current state:', dbConnection.readyState);
+    }
+
     // Set database connection in app instance
     app.dbConnection = dbConnection;
 
