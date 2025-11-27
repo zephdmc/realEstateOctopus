@@ -20,6 +20,7 @@ logs/
 build/
 .out/
 .next/
+/backend/
 
 # OS files
 .DS_Store
