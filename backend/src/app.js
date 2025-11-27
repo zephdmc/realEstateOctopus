@@ -7,7 +7,7 @@ import cookieParser from 'cookie-parser';
 
 // Import configurations
 import appConfig from './config/app.js';
-import { configureCors, emergencyCors, testCors } from './middleware/cors.js';
+import { testCors } from './middleware/cors.js';
 
 // Import middleware
 import { 
@@ -35,15 +35,57 @@ class App {
 
   // Initialize all middlewares
   initializeMiddlewares() {
-    // 🚨 TEMPORARY: Use emergency CORS to fix the issue immediately
-    console.log('🚨 Applying emergency CORS configuration for GitHub Pages');
-    emergencyCors(this.app);
+    // 🚨 CRITICAL: CORS MUST BE ABSOLUTELY FIRST
+    console.log('🔧 Initializing CORS middleware...');
+    
+    // Direct CORS configuration - no external functions
+    this.app.use(cors({
+      origin: [
+        'https://zephdmc.github.io',
+        'https://zephdmc.github.io/realEstateOctopus',
+        'http://localhost:3000',
+        'http://localhost:5173',
+        'https://eliteproperties.vercel.app'
+      ],
+      credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin'],
+      optionsSuccessStatus: 200
+    }));
+
+    // Handle preflight requests globally
+    this.app.options('*', cors());
+
+    // Manual CORS headers as final backup
+    this.app.use((req, res, next) => {
+      const origin = req.headers.origin;
+      const allowedOrigins = [
+        'https://zephdmc.github.io',
+        'https://zephdmc.github.io/realEstateOctopus',
+        'http://localhost:3000',
+        'http://localhost:5173',
+        'https://eliteproperties.vercel.app'
+      ];
+
+      if (origin && allowedOrigins.includes(origin)) {
+        res.header('Access-Control-Allow-Origin', origin);
+      }
+      res.header('Access-Control-Allow-Credentials', 'true');
+      res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+      res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, Origin');
+
+      if (req.method === 'OPTIONS') {
+        console.log('🛬 Handling preflight request for:', req.path);
+        return res.status(200).end();
+      }
+      next();
+    });
 
     // Security middleware - configure helmet to be CORS compatible
     this.app.use(helmet({
       crossOriginResourcePolicy: { policy: "cross-origin" },
-      // Temporarily disable some helmet features for CORS compatibility
-      contentSecurityPolicy: false
+      crossOriginEmbedderPolicy: false,
+      contentSecurityPolicy: false // Temporarily disable for testing
     }));
 
     // Compression middleware
@@ -80,11 +122,25 @@ class App {
     this.app.use('/uploads', express.static(appConfig.upload.directory));
     this.app.use('/public', express.static('public'));
 
+    // Simple test endpoint (no external imports)
+    this.app.get('/test-cors', (req, res) => {
+      res.json({
+        success: true,
+        message: 'CORS test successful!',
+        yourOrigin: req.headers.origin,
+        timestamp: new Date().toISOString(),
+        allowedOrigins: [
+          'https://zephdmc.github.io',
+          'https://zephdmc.github.io/realEstateOctopus',
+          'http://localhost:3000',
+          'http://localhost:5173',
+          'https://eliteproperties.vercel.app'
+        ]
+      });
+    });
+
     // Health check endpoint with CORS
     this.app.get('/health', this.healthCheck);
-    
-    // CORS test endpoint
-    this.app.get('/api/test-cors', testCors);
   }
 
   // Apply rate limiting based on routes
@@ -334,7 +390,7 @@ class App {
 📍 Environment: ${this.environment}
 📍 Port: ${this.port}
 📍 Health: http://localhost:${this.port}/health
-📍 CORS Test: http://localhost:${this.port}/api/test-cors
+📍 CORS Test: http://localhost:${this.port}/test-cors
 ${appConfig.api.docs.enabled ? `📍 API Docs: http://localhost:${this.port}${appConfig.api.docs.path}` : ''}
 📍 Allowed Origins: 
    - https://zephdmc.github.io
