@@ -8,6 +8,8 @@ dotenv.config();
 
 const startServer = async () => {
   try {
+    console.log("🚀 SERVER.JS STARTING - VERSION 2");
+
     // Connect to database
     const dbConnection = await databaseConfig.connect(); // connect() returns mongoose.connection
 
