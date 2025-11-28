@@ -300,6 +300,7 @@ const fetchProperties = useCallback(async () => {
 
   // CRUD Operations
   // CREATE - Add new property with images - FIXED
+// CREATE - Add new property with images - FIXED STATE UPDATE
 const handleAddProperty = useCallback(async (e) => {
   e.preventDefault();
   
@@ -369,11 +370,61 @@ const handleAddProperty = useCallback(async (e) => {
 
     const response = await propertiesAPI.createProperty(propertyData);
     
-    // Handle different response structures
-    const createdProperty = response.data || response;
+    console.log('📦 Create response:', response);
     
-    // Update local state
-    setProperties(prev => [createdProperty, ...prev]);
+    // Extract the actual property data from the response - FIXED
+    let createdPropertyData;
+    if (response && response.data) {
+      // Response structure: {success: true, data: {...}, message: '...'}
+      createdPropertyData = response.data;
+    } else if (response && response._id) {
+      // Response is the property object directly
+      createdPropertyData = response;
+    } else {
+      throw new Error('Invalid response format from server');
+    }
+
+    console.log('✅ Extracted created property:', createdPropertyData);
+    
+    // Normalize the created property data
+    const normalizedCreatedProperty = {
+      _id: createdPropertyData._id || createdPropertyData.id,
+      id: createdPropertyData._id || createdPropertyData.id,
+      title: createdPropertyData.title || 'Untitled Property',
+      description: createdPropertyData.description || 'No description available',
+      price: createdPropertyData.price || 0,
+      currency: createdPropertyData.currency || 'USD',
+      type: createdPropertyData.type || 'house',
+      status: createdPropertyData.status || 'for-sale',
+      location: createdPropertyData.location || {
+        address: 'Address not specified',
+        city: 'City not specified',
+        state: 'State not specified',
+        zipCode: '',
+        country: 'United States'
+      },
+      specifications: createdPropertyData.specifications || {
+        bedrooms: 0,
+        bathrooms: 0,
+        area: 0,
+        areaUnit: 'sqft',
+        yearBuilt: '',
+        floors: 1,
+        parking: 0
+      },
+      amenities: createdPropertyData.amenities || [],
+      images: createdPropertyData.images || [],
+      featuredImage: createdPropertyData.featuredImage,
+      createdBy: createdPropertyData.createdBy,
+      agentId: createdPropertyData.agentId,
+      createdAt: createdPropertyData.createdAt,
+      updatedAt: createdPropertyData.updatedAt
+    };
+
+    console.log('🎯 Normalized created property:', normalizedCreatedProperty);
+    
+    // Update local state with normalized data
+    setProperties(prev => [normalizedCreatedProperty, ...prev]);
     setSuccess(SUCCESS_MESSAGES.PROPERTY_CREATED);
     handleCloseAddModal();
 
@@ -451,6 +502,7 @@ const handleAddProperty = useCallback(async (e) => {
 
   // UPDATE - Update existing property with images
   // UPDATE - Update existing property with images - FIXED
+// UPDATE - Update existing property with images - FIXED STATE UPDATE
 const handleUpdateProperty = useCallback(async (e) => {
   e.preventDefault();
   
@@ -494,7 +546,6 @@ const handleUpdateProperty = useCallback(async (e) => {
 
     // Add optional yearBuilt if provided - FIXED
     if (propertyForm.specifications.yearBuilt) {
-      // Convert to string first to check if it's not empty, then parse to integer
       const yearBuiltStr = String(propertyForm.specifications.yearBuilt).trim();
       if (yearBuiltStr) {
         updateData.specifications.yearBuilt = parseInt(yearBuiltStr);
@@ -505,12 +556,64 @@ const handleUpdateProperty = useCallback(async (e) => {
 
     const response = await propertiesAPI.updateProperty(selectedProperty._id, updateData);
     
-    const updatedProperty = response.data || response;
+    console.log('📦 Update response:', response);
     
-    // Update local state
+    // Extract the actual property data from the response - FIXED
+    let updatedPropertyData;
+    if (response && response.data) {
+      // Response structure: {success: true, data: {...}, message: '...'}
+      updatedPropertyData = response.data;
+    } else if (response && response._id) {
+      // Response is the property object directly
+      updatedPropertyData = response;
+    } else {
+      throw new Error('Invalid response format from server');
+    }
+
+    console.log('✅ Extracted updated property:', updatedPropertyData);
+    
+    // Normalize the updated property data
+    const normalizedUpdatedProperty = {
+      _id: updatedPropertyData._id || updatedPropertyData.id,
+      id: updatedPropertyData._id || updatedPropertyData.id,
+      title: updatedPropertyData.title || 'Untitled Property',
+      description: updatedPropertyData.description || 'No description available',
+      price: updatedPropertyData.price || 0,
+      currency: updatedPropertyData.currency || 'USD',
+      type: updatedPropertyData.type || 'house',
+      status: updatedPropertyData.status || 'for-sale',
+      location: updatedPropertyData.location || {
+        address: 'Address not specified',
+        city: 'City not specified',
+        state: 'State not specified',
+        zipCode: '',
+        country: 'United States'
+      },
+      specifications: updatedPropertyData.specifications || {
+        bedrooms: 0,
+        bathrooms: 0,
+        area: 0,
+        areaUnit: 'sqft',
+        yearBuilt: '',
+        floors: 1,
+        parking: 0
+      },
+      amenities: updatedPropertyData.amenities || [],
+      images: updatedPropertyData.images || [],
+      featuredImage: updatedPropertyData.featuredImage,
+      createdBy: updatedPropertyData.createdBy,
+      agentId: updatedPropertyData.agentId,
+      createdAt: updatedPropertyData.createdAt,
+      updatedAt: updatedPropertyData.updatedAt
+    };
+
+    console.log('🎯 Normalized updated property:', normalizedUpdatedProperty);
+    
+    // Update local state with normalized data
     setProperties(prev => 
-      prev.map(p => p._id === selectedProperty._id ? updatedProperty : p)
+      prev.map(p => p._id === selectedProperty._id ? normalizedUpdatedProperty : p)
     );
+    
     setSuccess(SUCCESS_MESSAGES.PROPERTY_UPDATED);
     handleCloseEditModal();
 
