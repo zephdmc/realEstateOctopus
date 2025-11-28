@@ -60,7 +60,7 @@ import { logInfo, logError } from './src/utils/logger.js';
 
 const startServer = async () => {
   try {
-    logInfo("🚀 SERVER.JS STARTING - ROBUST VERSION");
+    logInfo("🚀 SERVER.JS STARTING - MONGOOSE v7 COMPATIBLE");
 
     const MONGODB_URI = process.env.MONGODB_URI;
     
@@ -70,93 +70,62 @@ const startServer = async () => {
 
     logInfo('🔗 Connecting to MongoDB Atlas...');
 
-    let mongoose;
-    let dbConnection;
-
     try {
-      // Import mongoose
-      mongoose = await import('mongoose');
+      // Import mongoose - modern versions have different API
+      const mongoose = await import('mongoose');
       logInfo('✅ Mongoose imported successfully');
       
-      // Set mongoose connection events for debugging
-      mongoose.connection.on('connecting', () => {
-        logInfo('📡 MongoDB connecting...');
-      });
+      // For mongoose v6+, connection events are set up differently
+      // Don't set up event listeners on mongoose.connection directly
       
-      mongoose.connection.on('connected', () => {
-        logInfo('✅ MongoDB connected event fired');
-      });
-      
-      mongoose.connection.on('error', (err) => {
-        logError('❌ MongoDB connection error:', err);
-      });
-
-      // Connection options
-      const options = {
-        useNewUrlParser: true,
-        useUnifiedTopology: true,
-        serverSelectionTimeoutMS: 10000,
-        socketTimeoutMS: 45000,
-      };
-
       logInfo('📡 Establishing database connection...');
       
-      // Connect to MongoDB
-      await mongoose.connect(MONGODB_URI, options);
-      logInfo('✅ Mongoose connect() completed');
+      // Modern mongoose connection - simpler approach
+      await mongoose.connect(MONGODB_URI, {
+        // These options are the main ones needed for modern mongoose
+        serverSelectionTimeoutMS: 10000,
+        socketTimeoutMS: 45000,
+      });
       
-      // Get connection object
-      dbConnection = mongoose.connection;
+      logInfo('✅ Mongoose connect() completed successfully');
+      
+      // Get the connection - in modern mongoose, this should be available after connect
+      const dbConnection = mongoose.connection;
       
       if (!dbConnection) {
-        throw new Error('Mongoose connection object is undefined');
+        throw new Error('Mongoose connection object is not available');
       }
       
-      logInfo(`📊 MongoDB connection object obtained, readyState: ${dbConnection.readyState}`);
+      logInfo(`📊 MongoDB connection state: ${dbConnection.readyState} (1=connected)`);
 
-      // Wait for connection to be ready
-      if (dbConnection.readyState !== 1) {
-        logInfo('⏳ Waiting for MongoDB connection to be ready...');
-        await new Promise((resolve, reject) => {
-          const timeout = setTimeout(() => {
-            reject(new Error('MongoDB connection timeout'));
-          }, 15000);
-
-          if (dbConnection.readyState === 1) {
-            clearTimeout(timeout);
-            resolve();
-            return;
-          }
-
-          dbConnection.once('connected', () => {
-            clearTimeout(timeout);
-            resolve();
-          });
-
-          dbConnection.once('error', (err) => {
-            clearTimeout(timeout);
-            reject(err);
-          });
-        });
+      // Check if we're connected
+      if (dbConnection.readyState === 1) {
+        logInfo('✅ MongoDB connected successfully');
+      } else {
+        // Wait a bit and check again
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        if (dbConnection.readyState === 1) {
+          logInfo('✅ MongoDB connected successfully after wait');
+        } else {
+          throw new Error(`MongoDB connection not established. State: ${dbConnection.readyState}`);
+        }
       }
 
-      logInfo(`✅ MongoDB connected successfully. State: ${dbConnection.readyState}`);
+      // Set database connection in app instance if needed
+      if (app.dbConnection !== undefined) {
+        app.dbConnection = dbConnection;
+        logInfo('✅ Database connection set in app instance');
+      }
+
+      // Set database health status if method exists
+      if (typeof app.setDatabaseHealth === 'function') {
+        app.setDatabaseHealth('connected');
+        logInfo('✅ Database health status set');
+      }
 
     } catch (dbError) {
       logError('❌ MongoDB connection failed:', dbError);
       throw dbError;
-    }
-
-    // Set database connection in app instance if needed
-    if (app.dbConnection !== undefined) {
-      app.dbConnection = dbConnection;
-      logInfo('✅ Database connection set in app instance');
-    }
-
-    // Set database health status if method exists
-    if (typeof app.setDatabaseHealth === 'function') {
-      app.setDatabaseHealth('connected');
-      logInfo('✅ Database health status set');
     }
 
     // Start the Express server
@@ -183,13 +152,12 @@ const startServer = async () => {
       });
 
       // Close MongoDB connection
-      if (mongoose && mongoose.connection && mongoose.connection.readyState === 1) {
-        try {
-          await mongoose.disconnect();
-          logInfo('✅ MongoDB connection closed');
-        } catch (error) {
-          logError('❌ Error closing MongoDB connection:', error);
-        }
+      try {
+        const mongoose = await import('mongoose');
+        await mongoose.disconnect();
+        logInfo('✅ MongoDB connection closed');
+      } catch (error) {
+        logError('❌ Error closing MongoDB connection:', error);
       }
 
       logInfo('👋 Process terminated gracefully');
@@ -216,10 +184,11 @@ const startServer = async () => {
     logError('❌ Failed to start application:', error);
     
     // Provide specific MongoDB connection troubleshooting
-    if (error.name === 'MongoNetworkError' || error.message.includes('ECONNREFUSED')) {
+    if (error.name === 'MongoServerSelectionError') {
       logError('🔧 Troubleshooting: Check if your MongoDB Atlas IP whitelist includes Render.com IP addresses');
       logError('🔧 Troubleshooting: Verify your MongoDB Atlas cluster is running');
-      logError('🔧 Troubleshooting: Check if your MongoDB username/password are correct');
+    } else if (error.name === 'MongoParseError') {
+      logError('🔧 Troubleshooting: Check your MongoDB connection string format');
     }
     
     process.exit(1);
