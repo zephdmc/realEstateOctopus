@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import MainLayout from '../../components/layout/MainLayout';
 import { WideContainer, GridContainer } from '../../components/layout/PageContainer';
 import { 
@@ -305,13 +306,13 @@ const Services = () => {
               Experience the difference of professional real estate services.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <a
-                href="/contact"
+              <Link
+                to="/contact"
                 className="bg-white text-blue-600 px-8 py-4 rounded-lg hover:bg-blue-50 transition-all duration-200 font-semibold text-lg shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center justify-center space-x-2"
               >
                 <FaRocket className="w-5 h-5" />
                 <span>Get Started</span>
-              </a>
+              </Link>
               <a
                 href="tel:+2349132080059"
                 className="border-2 border-white text-white px-8 py-4 rounded-lg hover:bg-white hover:text-blue-600 transition-all duration-200 font-semibold text-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center justify-center space-x-2"

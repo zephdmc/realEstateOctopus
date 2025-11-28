@@ -129,14 +129,14 @@ const Footer = () => {
               </p>
               <div className="flex space-x-3">
                 {socialLinks.map((social) => (
-                  <a
+                  <Link
                     key={social.name}
-                    href={social.href}
+                    to={social.href}
                     className="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-xl flex items-center justify-center hover:bg-blue-600/80 transition-all duration-300 hover:shadow-lg hover:scale-110 border border-white/20"
                     title={social.name}
                   >
                     {social.icon}
-                  </a>
+                  </Link>
                 ))}
               </div>
             </div>
@@ -169,13 +169,13 @@ const Footer = () => {
               <ul className="space-y-3">
                 {services.map((service) => (
                   <li key={service}>
-                    <a
+                    <Link
                       href="#"
                       className="text-gray-300 hover:text-white transition-all duration-300 text-sm flex items-center group hover:translate-x-1"
                     >
                       <span className="w-2 h-2 bg-blue-500 rounded-full mr-3 opacity-0 group-hover:opacity-100 transition-all duration-300 group-hover:scale-125"></span>
                       {service}
-                    </a>
+                    </Link>
                   </li>
                 ))}
               </ul>
@@ -214,13 +214,13 @@ const Footer = () => {
               </div>
               <div className="flex space-x-6 text-sm">
                 {['Privacy Policy', 'Terms of Service', 'Sitemap'].map((item) => (
-                  <a 
+                  <Link
                     key={item} 
                     href="#" 
                     className="text-gray-300 hover:text-white transition-all duration-300 text-sm hover:underline"
                   >
                     {item}
-                  </a>
+                  </Link>
                 ))}
               </div>
             </div>
