@@ -27,7 +27,7 @@ const propertySchema = new mongoose.Schema({
   currency: {
     type: String,
     default: 'USD',
-    enum: ['USD', 'EUR', 'GBP', 'CAD', 'AUD']
+    enum: ['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'NAN']
   },
   type: {
     type: String,
