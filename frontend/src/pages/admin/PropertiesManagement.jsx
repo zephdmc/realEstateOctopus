@@ -84,91 +84,100 @@ const PropertiesManagement = () => {
   });
 
   // Fetch properties from API - FIXED DATA EXTRACTION
-  const fetchProperties = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError('');
-      
-      console.log('🔍 Starting to fetch properties...');
-      const response = await propertiesAPI.getMyProperties();
-      
-      console.log('📦 Raw API response:', response);
-      
-      let propertiesData = [];
-      
-      // Handle API response structure
-      if (response && response.success) {
-        // Response has {success: true, count: 4, data: Array(4)}
-        propertiesData = response.data || [];
-        console.log('✅ Extracted properties data:', propertiesData);
-      } else if (Array.isArray(response)) {
-        // Response is directly an array
-        propertiesData = response;
-      } else if (response && typeof response === 'object') {
-        // Try other possible structures
-        propertiesData = response.properties || response.data || [];
-      }
-      
-      if (!Array.isArray(propertiesData)) {
-        console.warn('⚠️ Properties data is not an array:', propertiesData);
-        propertiesData = [];
-      }
-
-      console.log(`📊 Found ${propertiesData.length} properties:`, propertiesData);
-
-      // Normalize property data structure with better fallbacks
-      const normalizedProperties = propertiesData.map((property, index) => {
-        const normalized = {
-          _id: property._id || property.id || `temp-${index}`,
-          title: property.title || 'Untitled Property',
-          description: property.description || 'No description available',
-          price: property.price || 0,
-          currency: property.currency || 'USD',
-          type: property.type || 'house',
-          status: property.status || 'for-sale',
-          location: property.location || {
-            address: 'Address not specified',
-            city: 'City not specified',
-            state: 'State not specified',
-            zipCode: '',
-            country: 'United States'
-          },
-          specifications: property.specifications || {
-            bedrooms: 0,
-            bathrooms: 0,
-            area: 0,
-            areaUnit: 'sqft',
-            yearBuilt: '',
-            floors: 1,
-            parking: 0
-          },
-          amenities: property.amenities || [],
-          images: property.images || [],
-          featuredImage: property.featuredImage,
-          createdBy: property.createdBy,
-          agentId: property.agentId,
-          createdAt: property.createdAt,
-          updatedAt: property.updatedAt
-        };
-
-        console.log(`🏠 Property ${index}:`, normalized);
-        return normalized;
-      });
-
-      setProperties(normalizedProperties);
-      setFilteredProperties(normalizedProperties);
-      
-      console.log(`🎉 Successfully loaded ${normalizedProperties.length} properties`);
-      
-    } catch (error) {
-      console.error('❌ Error fetching properties:', error);
-      setError(error.message || ERROR_MESSAGES.DEFAULT);
-      setProperties([]);
-      setFilteredProperties([]);
-    } finally {
-      setLoading(false);
+  // Fetch properties from API - ULTRA ROBUST VERSION
+const fetchProperties = useCallback(async () => {
+  try {
+    setLoading(true);
+    setError('');
+    
+    console.log('🔍 Starting to fetch properties...');
+    const response = await propertiesAPI.getMyProperties();
+    
+    console.log('📦 Raw API response:', response);
+    
+    let propertiesData = [];
+    
+    // Handle API response structure
+    if (response && response.success && Array.isArray(response.data)) {
+      propertiesData = response.data;
+    } else if (Array.isArray(response)) {
+      propertiesData = response;
+    } else {
+      console.warn('⚠️ Unexpected response structure:', response);
+      propertiesData = [];
     }
-  }, []);
+    
+    if (!Array.isArray(propertiesData)) {
+      console.warn('⚠️ Properties data is not an array:', propertiesData);
+      propertiesData = [];
+    }
+
+    console.log(`📊 Found ${propertiesData.length} raw properties:`, propertiesData);
+
+    // ULTRA ROBUST normalization
+    const normalizedProperties = propertiesData.map((property, index) => {
+      console.log(`🔧 Processing property ${index}:`, property);
+      
+      // Handle both _id and id fields
+      const propertyId = property._id || property.id || `temp-${index}`;
+      
+      // Handle location with fallbacks
+      const location = property.location || {};
+      
+      // Handle specifications with fallbacks
+      const specifications = property.specifications || {};
+      
+      const normalized = {
+        _id: propertyId,
+        id: propertyId, // Include both for compatibility
+        title: property.title || 'Untitled Property',
+        description: property.description || 'No description available',
+        price: property.price || 0,
+        currency: property.currency || 'USD',
+        type: property.type || 'house',
+        status: property.status || 'for-sale',
+        location: {
+          address: location.address || 'Address not specified',
+          city: location.city || 'City not specified',
+          state: location.state || 'State not specified',
+          zipCode: location.zipCode || '',
+          country: location.country || 'United States'
+        },
+        specifications: {
+          bedrooms: specifications.bedrooms || 0,
+          bathrooms: specifications.bathrooms || 0,
+          area: specifications.area || 0,
+          areaUnit: specifications.areaUnit || 'sqft',
+          yearBuilt: specifications.yearBuilt || '',
+          floors: specifications.floors || 1,
+          parking: specifications.parking || 0
+        },
+        amenities: property.amenities || [],
+        images: property.images || [],
+        featuredImage: property.featuredImage,
+        createdBy: property.createdBy,
+        agentId: property.agentId,
+        createdAt: property.createdAt,
+        updatedAt: property.updatedAt
+      };
+
+      console.log(`✅ Normalized property ${index}:`, normalized);
+      return normalized;
+    });
+
+    console.log('🎉 Final normalized properties:', normalizedProperties);
+    setProperties(normalizedProperties);
+    setFilteredProperties(normalizedProperties);
+    
+  } catch (error) {
+    console.error('❌ Error fetching properties:', error);
+    setError(error.message || ERROR_MESSAGES.DEFAULT);
+    setProperties([]);
+    setFilteredProperties([]);
+  } finally {
+    setLoading(false);
+  }
+}, []);
 
   // Initial fetch
   useEffect(() => {
@@ -1293,98 +1302,103 @@ const PropertiesManagement = () => {
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredProperties.length > 0 ? (
-                filteredProperties.map((property) => (
-                  <tr key={property._id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="h-10 w-10 flex-shrink-0">
-                          <img
-                            className="h-10 w-10 rounded-lg object-cover"
-                            src={getPropertyImage(property)}
-                            alt={property.title}
-                            onError={(e) => {
-                              if (e.target.src !== PLACEHOLDER_IMAGE) {
-                                e.target.src = PLACEHOLDER_IMAGE;
-                              }
-                            }}
-                          />
-                        </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900 line-clamp-1">
-                            {property.title}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {getPropertyDetails(property)}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getTypeColor(property.type)}`}>
-                        {formatPropertyType(property.type)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {formatPropertyPrice(property)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(property.status)}`}>
-                        {formatPropertyStatus(property.status)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {getPropertyLocation(property)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex items-center space-x-2">
-                        <button 
-                          className="text-blue-600 hover:text-blue-900 transition-colors"
-                          onClick={() => handleViewProperty(property)}
-                          title="View Property"
-                        >
-                          <Eye size={16} />
-                        </button>
-                        <button 
-                          className="text-green-600 hover:text-green-900 transition-colors"
-                          onClick={() => handleEditProperty(property)}
-                          title="Edit Property"
-                        >
-                          <Edit size={16} />
-                        </button>
-                        <button 
-                          className="text-red-600 hover:text-red-900 transition-colors"
-                          onClick={() => handleDeleteProperty(property)}
-                          title="Delete Property"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                // Show empty state only when there are no filtered properties
-                <tr>
-                  <td colSpan="6" className="px-6 py-24 text-center">
-                    <div className="text-gray-400 text-6xl mb-4">🏠</div>
-                    <h3 className="text-lg font-medium text-gray-900">No properties found</h3>
-                    <p className="text-gray-500 mt-1">
-                      {properties.length === 0 ? 'You haven\'t added any properties yet.' : 'Try adjusting your search or filters'}
-                    </p>
-                    {properties.length === 0 && (
-                      <button
-                        onClick={handleOpenAddModal}
-                        className="mt-6 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-semibold"
-                      >
-                        Add Your First Property
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              )}
-            </tbody>
+            // In the table body, replace with this more explicit rendering:
+<tbody className="bg-white divide-y divide-gray-200">
+  {filteredProperties.length > 0 ? (
+    filteredProperties.map((property) => {
+      console.log('📋 Rendering property in table:', property);
+      return (
+        <tr key={property._id} className="hover:bg-gray-50">
+          <td className="px-6 py-4 whitespace-nowrap">
+            <div className="flex items-center">
+              <div className="h-10 w-10 flex-shrink-0">
+                <img
+                  className="h-10 w-10 rounded-lg object-cover"
+                  src={getPropertyImage(property)}
+                  alt={property.title}
+                  onError={(e) => {
+                    if (e.target.src !== PLACEHOLDER_IMAGE) {
+                      e.target.src = PLACEHOLDER_IMAGE;
+                    }
+                  }}
+                />
+              </div>
+              <div className="ml-4">
+                <div className="text-sm font-medium text-gray-900 line-clamp-1">
+                  {property.title || 'No Title'}
+                </div>
+                <div className="text-sm text-gray-500">
+                  {getPropertyDetails(property)}
+                </div>
+              </div>
+            </div>
+          </td>
+          <td className="px-6 py-4 whitespace-nowrap">
+            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getTypeColor(property.type)}`}>
+              {formatPropertyType(property.type)}
+            </span>
+          </td>
+          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+            {formatPropertyPrice(property)}
+          </td>
+          <td className="px-6 py-4 whitespace-nowrap">
+            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(property.status)}`}>
+              {formatPropertyStatus(property.status)}
+            </span>
+          </td>
+          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+            {getPropertyLocation(property)}
+          </td>
+          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+            <div className="flex items-center space-x-2">
+              <button 
+                className="text-blue-600 hover:text-blue-900 transition-colors"
+                onClick={() => handleViewProperty(property)}
+                title="View Property"
+              >
+                <Eye size={16} />
+              </button>
+              <button 
+                className="text-green-600 hover:text-green-900 transition-colors"
+                onClick={() => handleEditProperty(property)}
+                title="Edit Property"
+              >
+                <Edit size={16} />
+              </button>
+              <button 
+                className="text-red-600 hover:text-red-900 transition-colors"
+                onClick={() => handleDeleteProperty(property)}
+                title="Delete Property"
+              >
+                <Trash2 size={16} />
+              </button>
+            </div>
+          </td>
+        </tr>
+      );
+    })
+  ) : (
+    <tr>
+      <td colSpan="6" className="px-6 py-24 text-center">
+        <div className="text-gray-400 text-6xl mb-4">🏠</div>
+        <h3 className="text-lg font-medium text-gray-900">
+          {properties.length === 0 ? 'No properties found' : 'No matching properties'}
+        </h3>
+        <p className="text-gray-500 mt-1">
+          {properties.length === 0 ? 'You haven\'t added any properties yet.' : 'Try adjusting your search or filters'}
+        </p>
+        {properties.length === 0 && (
+          <button
+            onClick={handleOpenAddModal}
+            className="mt-6 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-semibold"
+          >
+            Add Your First Property
+          </button>
+        )}
+      </td>
+    </tr>
+  )}
+</tbody>
           </table>
         </div>
 
