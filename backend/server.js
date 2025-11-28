@@ -60,7 +60,7 @@ import { logInfo, logError } from './src/utils/logger.js';
 
 const startServer = async () => {
   try {
-    logInfo("🚀 SERVER.JS STARTING - PRODUCTION READY");
+    logInfo("🚀 SERVER.JS STARTING - ROBUST VERSION");
 
     const MONGODB_URI = process.env.MONGODB_URI;
     
@@ -70,37 +70,81 @@ const startServer = async () => {
 
     logInfo('🔗 Connecting to MongoDB Atlas...');
 
-    // Import mongoose and connect directly
-    const mongoose = await import('mongoose');
-    
-    // Connection options for MongoDB Atlas
-    const options = {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-      retryWrites: true,
-      w: 'majority'
-    };
+    let mongoose;
+    let dbConnection;
 
-    logInfo('📡 Establishing database connection...');
-    
-    // Simple connection without complex event handling
-    await mongoose.connect(MONGODB_URI, options);
-    
-    const dbConnection = mongoose.connection;
-    
-    // Check connection state
-    logInfo(`📊 MongoDB connection state: ${dbConnection.readyState}`);
-    
-    if (dbConnection.readyState === 1) {
-      logInfo('✅ MongoDB Atlas connected successfully');
-    } else {
-      // Wait a moment and check again
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      if (dbConnection.readyState === 1) {
-        logInfo('✅ MongoDB Atlas connected successfully after wait');
-      } else {
-        throw new Error(`MongoDB connection failed. State: ${dbConnection.readyState}`);
+    try {
+      // Import mongoose
+      mongoose = await import('mongoose');
+      logInfo('✅ Mongoose imported successfully');
+      
+      // Set mongoose connection events for debugging
+      mongoose.connection.on('connecting', () => {
+        logInfo('📡 MongoDB connecting...');
+      });
+      
+      mongoose.connection.on('connected', () => {
+        logInfo('✅ MongoDB connected event fired');
+      });
+      
+      mongoose.connection.on('error', (err) => {
+        logError('❌ MongoDB connection error:', err);
+      });
+
+      // Connection options
+      const options = {
+        useNewUrlParser: true,
+        useUnifiedTopology: true,
+        serverSelectionTimeoutMS: 10000,
+        socketTimeoutMS: 45000,
+      };
+
+      logInfo('📡 Establishing database connection...');
+      
+      // Connect to MongoDB
+      await mongoose.connect(MONGODB_URI, options);
+      logInfo('✅ Mongoose connect() completed');
+      
+      // Get connection object
+      dbConnection = mongoose.connection;
+      
+      if (!dbConnection) {
+        throw new Error('Mongoose connection object is undefined');
       }
+      
+      logInfo(`📊 MongoDB connection object obtained, readyState: ${dbConnection.readyState}`);
+
+      // Wait for connection to be ready
+      if (dbConnection.readyState !== 1) {
+        logInfo('⏳ Waiting for MongoDB connection to be ready...');
+        await new Promise((resolve, reject) => {
+          const timeout = setTimeout(() => {
+            reject(new Error('MongoDB connection timeout'));
+          }, 15000);
+
+          if (dbConnection.readyState === 1) {
+            clearTimeout(timeout);
+            resolve();
+            return;
+          }
+
+          dbConnection.once('connected', () => {
+            clearTimeout(timeout);
+            resolve();
+          });
+
+          dbConnection.once('error', (err) => {
+            clearTimeout(timeout);
+            reject(err);
+          });
+        });
+      }
+
+      logInfo(`✅ MongoDB connected successfully. State: ${dbConnection.readyState}`);
+
+    } catch (dbError) {
+      logError('❌ MongoDB connection failed:', dbError);
+      throw dbError;
     }
 
     // Set database connection in app instance if needed
@@ -129,7 +173,7 @@ const startServer = async () => {
     logInfo(`🌐 MongoDB Database: realestate`);
     logInfo(`🔗 MongoDB Cluster: imoitc`);
 
-    // Graceful shutdown handlers
+    // Graceful shutdown
     const gracefulShutdown = async (signal) => {
       logInfo(`\n📭 ${signal} received, shutting down gracefully...`);
       
@@ -139,7 +183,7 @@ const startServer = async () => {
       });
 
       // Close MongoDB connection
-      if (dbConnection.readyState === 1) {
+      if (mongoose && mongoose.connection && mongoose.connection.readyState === 1) {
         try {
           await mongoose.disconnect();
           logInfo('✅ MongoDB connection closed');
@@ -175,6 +219,7 @@ const startServer = async () => {
     if (error.name === 'MongoNetworkError' || error.message.includes('ECONNREFUSED')) {
       logError('🔧 Troubleshooting: Check if your MongoDB Atlas IP whitelist includes Render.com IP addresses');
       logError('🔧 Troubleshooting: Verify your MongoDB Atlas cluster is running');
+      logError('🔧 Troubleshooting: Check if your MongoDB username/password are correct');
     }
     
     process.exit(1);
