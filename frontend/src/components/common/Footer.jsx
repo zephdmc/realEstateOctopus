@@ -86,122 +86,143 @@ const Footer = () => {
   ];
 
   return (
-    <footer className="bg-gray-900 text-white">
-      {/* Main Footer Content */}
-      <div className="max-w-7xl mx-auto px-6 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12">
-          
-          {/* Brand Section */}
-          <div className="lg:col-span-1">
-            <div className="flex items-center space-x-3 mb-6">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center shadow-lg">
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
-                </svg>
-              </div>
-              <div>
-                <h3 className="text-xl font-bold text-white">Octopus Real Estate</h3>
-                <p className="text-blue-400 text-sm">Your Trusted Partner</p>
-              </div>
-            </div>
-            <p className="text-gray-400 text-sm mb-6 leading-relaxed">
-              Finding your perfect home with expert guidance and professional service since 2008.
-            </p>
-            <div className="flex space-x-3">
-              {socialLinks.map((social) => (
-                <a
-                  key={social.name}
-                  href={social.href}
-                  className="w-8 h-8 bg-gray-800 rounded-lg flex items-center justify-center hover:bg-blue-600 transition-all duration-300 hover:shadow-lg"
-                  title={social.name}
-                >
-                  {social.icon}
-                </a>
-              ))}
-            </div>
-          </div>
+    <footer className="relative bg-gray-900 text-white overflow-hidden">
+      {/* Luxury Real Estate Background with Parallax Effect */}
+      <div 
+        className="absolute inset-0 bg-fixed bg-cover bg-center bg-no-repeat"
+        style={{
+          backgroundImage: `linear-gradient(
+            rgba(15, 23, 42, 0.85),
+            rgba(15, 23, 42, 0.92)
+          ), url('https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2053&q=80')`,
+          transform: 'translateZ(0)',
+          willChange: 'transform'
+        }}
+      >
+        {/* Additional Gradient Overlay for Depth */}
+        <div className="absolute inset-0 bg-gradient-to-b from-gray-900/20 via-gray-900/60 to-gray-900/90"></div>
+      </div>
 
-          {/* Quick Links */}
-          <div>
-            <h4 className="text-lg font-semibold text-white mb-6 pb-2 border-b border-gray-700 inline-block">
-              Quick Links
-            </h4>
-            <ul className="space-y-3">
-              {quickLinks.map((link) => (
-                <li key={link.name}>
-                  <Link
-                    to={link.href}
-                    className="text-gray-400 hover:text-white transition-colors duration-300 text-sm flex items-center group"
-                  >
-                    <span className="w-1 h-1 bg-blue-500 rounded-full mr-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
-                    {link.name}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Services */}
-          <div>
-            <h4 className="text-lg font-semibold text-white mb-6 pb-2 border-b border-gray-700 inline-block">
-              Our Services
-            </h4>
-            <ul className="space-y-3">
-              {services.map((service) => (
-                <li key={service}>
-                  <a
-                    href="#"
-                    className="text-gray-400 hover:text-white transition-colors duration-300 text-sm flex items-center group"
-                  >
-                    <span className="w-1 h-1 bg-blue-500 rounded-full mr-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
-                    {service}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Contact Info */}
-          <div>
-            <h4 className="text-lg font-semibold text-white mb-6 pb-2 border-b border-gray-700 inline-block">
-              Contact Info
-            </h4>
-            <div className="space-y-4">
-              {contactInfo.map((item, index) => (
-                <div 
-                  key={index} 
-                  className="flex items-start space-x-3 text-gray-400 group hover:text-white transition-colors duration-300"
-                >
-                  <div className="w-5 h-5 flex items-center justify-center flex-shrink-0 mt-0.5 text-blue-400">
-                    {item.icon}
-                  </div>
-                  <span className="text-sm leading-relaxed">
-                    {item.text}
-                  </span>
+      {/* Content Container */}
+      <div className="relative z-10">
+        {/* Main Footer Content */}
+        <div className="max-w-7xl mx-auto px-6 py-16">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-12">
+            
+            {/* Brand Section */}
+            <div className="lg:col-span-1">
+              <div className="flex items-center space-x-3 mb-6">
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center shadow-lg backdrop-blur-sm">
+                  <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                  </svg>
                 </div>
-              ))}
+                <div>
+                  <h3 className="text-2xl font-bold text-white bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
+                    Octopus Real Estate
+                  </h3>
+                  <p className="text-blue-400 text-sm font-medium">Luxury Living Experts</p>
+                </div>
+              </div>
+              <p className="text-gray-300 text-sm mb-8 leading-relaxed backdrop-blur-sm bg-white/5 rounded-lg p-4 border border-white/10">
+                Finding your perfect home with expert guidance and professional service since 2008. Experience luxury redefined.
+              </p>
+              <div className="flex space-x-3">
+                {socialLinks.map((social) => (
+                  <a
+                    key={social.name}
+                    href={social.href}
+                    className="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-xl flex items-center justify-center hover:bg-blue-600/80 transition-all duration-300 hover:shadow-lg hover:scale-110 border border-white/20"
+                    title={social.name}
+                  >
+                    {social.icon}
+                  </a>
+                ))}
+              </div>
+            </div>
+
+            {/* Quick Links */}
+            <div>
+              <h4 className="text-lg font-semibold text-white mb-6 pb-2 border-b border-blue-600/50 inline-block">
+                Quick Links
+              </h4>
+              <ul className="space-y-3">
+                {quickLinks.map((link) => (
+                  <li key={link.name}>
+                    <Link
+                      to={link.href}
+                      className="text-gray-300 hover:text-white transition-all duration-300 text-sm flex items-center group hover:translate-x-1"
+                    >
+                      <span className="w-2 h-2 bg-blue-500 rounded-full mr-3 opacity-0 group-hover:opacity-100 transition-all duration-300 group-hover:scale-125"></span>
+                      {link.name}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Services */}
+            <div>
+              <h4 className="text-lg font-semibold text-white mb-6 pb-2 border-b border-blue-600/50 inline-block">
+                Our Services
+              </h4>
+              <ul className="space-y-3">
+                {services.map((service) => (
+                  <li key={service}>
+                    <a
+                      href="#"
+                      className="text-gray-300 hover:text-white transition-all duration-300 text-sm flex items-center group hover:translate-x-1"
+                    >
+                      <span className="w-2 h-2 bg-blue-500 rounded-full mr-3 opacity-0 group-hover:opacity-100 transition-all duration-300 group-hover:scale-125"></span>
+                      {service}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Contact Info */}
+            <div>
+              <h4 className="text-lg font-semibold text-white mb-6 pb-2 border-b border-blue-600/50 inline-block">
+                Contact Info
+              </h4>
+              <div className="space-y-4">
+                {contactInfo.map((item, index) => (
+                  <div 
+                    key={index} 
+                    className="flex items-start space-x-3 text-gray-300 group hover:text-white transition-all duration-300 hover:translate-x-1"
+                  >
+                    <div className="w-5 h-5 flex items-center justify-center flex-shrink-0 mt-0.5 text-blue-400 group-hover:scale-110 transition-transform duration-300">
+                      {item.icon}
+                    </div>
+                    <span className="text-sm leading-relaxed">
+                      {item.text}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Bottom Bar */}
-      <div className="border-t border-gray-800 bg-gray-800/50">
-        <div className="max-w-7xl mx-auto px-6 py-6">
-          <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
-            <div className="text-gray-400 text-sm">
-              © {currentYear} Octopus Real Estate. All rights reserved.
-            </div>
-            <div className="flex space-x-6 text-sm">
-              {['Privacy Policy', 'Terms of Service', 'Sitemap'].map((item) => (
-                <a 
-                  key={item} 
-                  href="#" 
-                  className="text-gray-400 hover:text-white transition-colors duration-300 text-sm"
-                >
-                  {item}
-                </a>
-              ))}
+        {/* Bottom Bar */}
+        <div className="border-t border-white/10 bg-black/30 backdrop-blur-sm">
+          <div className="max-w-7xl mx-auto px-6 py-6">
+            <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
+              <div className="text-gray-300 text-sm">
+                © {currentYear} Octopus Real Estate. All rights reserved.
+              </div>
+              <div className="flex space-x-6 text-sm">
+                {['Privacy Policy', 'Terms of Service', 'Sitemap'].map((item) => (
+                  <a 
+                    key={item} 
+                    href="#" 
+                    className="text-gray-300 hover:text-white transition-all duration-300 text-sm hover:underline"
+                  >
+                    {item}
+                  </a>
+                ))}
+              </div>
             </div>
           </div>
         </div>
