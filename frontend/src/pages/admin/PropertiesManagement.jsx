@@ -83,23 +83,30 @@ const PropertiesManagement = () => {
     amenities: []
   });
 
-  // Fetch properties from API - FIXED DATA STRUCTURE
+  // Fetch properties from API - FIXED DATA EXTRACTION
   const fetchProperties = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
       
+      console.log('🔍 Starting to fetch properties...');
       const response = await propertiesAPI.getMyProperties();
       
       console.log('📦 Raw API response:', response);
       
       let propertiesData = [];
       
-      // Handle different response structures
-      if (Array.isArray(response)) {
+      // Handle API response structure
+      if (response && response.success) {
+        // Response has {success: true, count: 4, data: Array(4)}
+        propertiesData = response.data || [];
+        console.log('✅ Extracted properties data:', propertiesData);
+      } else if (Array.isArray(response)) {
+        // Response is directly an array
         propertiesData = response;
       } else if (response && typeof response === 'object') {
-        propertiesData = response.data || response.properties || [];
+        // Try other possible structures
+        propertiesData = response.properties || response.data || [];
       }
       
       if (!Array.isArray(propertiesData)) {
@@ -107,44 +114,51 @@ const PropertiesManagement = () => {
         propertiesData = [];
       }
 
-      console.log('✅ Processed properties:', propertiesData);
-      
-      // Normalize property data structure
-      const normalizedProperties = propertiesData.map(property => ({
-        _id: property._id || property.id,
-        title: property.title || 'Untitled Property',
-        description: property.description || '',
-        price: property.price || 0,
-        currency: property.currency || 'USD',
-        type: property.type || 'house',
-        status: property.status || 'for-sale',
-        location: property.location || {
-          address: '',
-          city: '',
-          state: '',
-          zipCode: '',
-          country: 'United States'
-        },
-        specifications: property.specifications || {
-          bedrooms: 0,
-          bathrooms: 0,
-          area: 0,
-          areaUnit: 'sqft',
-          yearBuilt: '',
-          floors: 1,
-          parking: 0
-        },
-        amenities: property.amenities || [],
-        images: property.images || [],
-        featuredImage: property.featuredImage,
-        createdBy: property.createdBy,
-        agentId: property.agentId,
-        createdAt: property.createdAt,
-        updatedAt: property.updatedAt
-      }));
+      console.log(`📊 Found ${propertiesData.length} properties:`, propertiesData);
+
+      // Normalize property data structure with better fallbacks
+      const normalizedProperties = propertiesData.map((property, index) => {
+        const normalized = {
+          _id: property._id || property.id || `temp-${index}`,
+          title: property.title || 'Untitled Property',
+          description: property.description || 'No description available',
+          price: property.price || 0,
+          currency: property.currency || 'USD',
+          type: property.type || 'house',
+          status: property.status || 'for-sale',
+          location: property.location || {
+            address: 'Address not specified',
+            city: 'City not specified',
+            state: 'State not specified',
+            zipCode: '',
+            country: 'United States'
+          },
+          specifications: property.specifications || {
+            bedrooms: 0,
+            bathrooms: 0,
+            area: 0,
+            areaUnit: 'sqft',
+            yearBuilt: '',
+            floors: 1,
+            parking: 0
+          },
+          amenities: property.amenities || [],
+          images: property.images || [],
+          featuredImage: property.featuredImage,
+          createdBy: property.createdBy,
+          agentId: property.agentId,
+          createdAt: property.createdAt,
+          updatedAt: property.updatedAt
+        };
+
+        console.log(`🏠 Property ${index}:`, normalized);
+        return normalized;
+      });
 
       setProperties(normalizedProperties);
       setFilteredProperties(normalizedProperties);
+      
+      console.log(`🎉 Successfully loaded ${normalizedProperties.length} properties`);
       
     } catch (error) {
       console.error('❌ Error fetching properties:', error);
@@ -168,6 +182,8 @@ const PropertiesManagement = () => {
       return;
     }
 
+    console.log('🔍 Filtering properties...', properties.length);
+    
     let filtered = properties.filter(property => {
       const matchesSearch = searchTerm === '' || 
         property.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -181,8 +197,14 @@ const PropertiesManagement = () => {
       return matchesSearch && matchesStatus && matchesType;
     });
 
+    console.log(`📊 Filtered to ${filtered.length} properties`);
     setFilteredProperties(filtered);
   }, [properties, searchTerm, statusFilter, typeFilter]);
+
+  // Debug: Log when filtered properties change
+  useEffect(() => {
+    console.log('🔄 Filtered properties updated:', filteredProperties.length);
+  }, [filteredProperties]);
 
   // IMAGE UPLOAD FUNCTIONS (keep existing)
   const handleImageUpload = async (event) => {
@@ -254,9 +276,7 @@ const PropertiesManagement = () => {
     setFeaturedImageId(null);
   };
 
-  // CRUD Operations - UPDATED WITH BETTER ERROR HANDLING
-
-  // CREATE - Add new property with images
+  // CRUD Operations
   const handleAddProperty = useCallback(async (e) => {
     e.preventDefault();
     
@@ -343,7 +363,7 @@ const PropertiesManagement = () => {
     }
   }, [propertyForm, user, uploadedImages, featuredImageId]);
 
-  // READ - Open edit modal with property data - FIXED DATA STRUCTURE
+  // READ - Open edit modal with property data
   const handleEditProperty = useCallback((property) => {
     if (!property) return;
     
@@ -379,7 +399,6 @@ const PropertiesManagement = () => {
     // Set existing images
     if (property.images && Array.isArray(property.images)) {
       const existingImages = property.images.map(img => {
-        // Handle both string IDs and image objects
         if (typeof img === 'string') {
           return {
             id: img,
@@ -455,7 +474,6 @@ const PropertiesManagement = () => {
 
       const response = await propertiesAPI.updateProperty(selectedProperty._id, updateData);
       
-      // Handle different response structures
       const updatedProperty = response.data || response;
       
       // Update local state
@@ -517,7 +535,7 @@ const PropertiesManagement = () => {
     }
   }, [selectedProperty]);
 
-  // Form Handlers (keep existing)
+  // Form Handlers
   const handleInputChange = useCallback((field, value) => {
     setPropertyForm(prev => ({
       ...prev,
@@ -588,7 +606,7 @@ const PropertiesManagement = () => {
     window.location.href = `/properties/${property._id}`;
   }, []);
 
-  // Helper functions - FIXED DATA ACCESS
+  // Helper functions
   const getStatusColor = useCallback((status) => {
     switch (status) {
       case 'for-sale': return 'bg-green-100 text-green-800';
@@ -612,11 +630,10 @@ const PropertiesManagement = () => {
     }
   }, []);
 
-  // FIXED: Better image handling
+  // Image handling
   const getPropertyImage = useCallback((property) => {
     if (property.images && property.images.length > 0) {
       const firstImage = property.images[0];
-      // Handle both string IDs and image objects
       if (typeof firstImage === 'string') {
         return PLACEHOLDER_IMAGE;
       } else if (firstImage.url && firstImage.url.startsWith('http')) {
@@ -626,14 +643,14 @@ const PropertiesManagement = () => {
     return PLACEHOLDER_IMAGE;
   }, []);
 
-  // FIXED: Better location formatting
+  // Location formatting
   const getPropertyLocation = useCallback((property) => {
     const location = property.location || {};
     const parts = [location.address, location.city, location.state].filter(Boolean);
     return parts.length > 0 ? parts.join(', ') : 'Location not specified';
   }, []);
 
-  // FIXED: Better property details formatting
+  // Property details formatting
   const getPropertyDetails = useCallback((property) => {
     const specs = property.specifications || {};
     const bedrooms = specs.bedrooms || 0;
@@ -644,7 +661,7 @@ const PropertiesManagement = () => {
     return `${bedrooms} beds • ${bathrooms} baths • ${area} ${areaUnit}`;
   }, []);
 
-  // FIXED: Better price formatting with fallback
+  // Price formatting
   const formatPropertyPrice = useCallback((property) => {
     if (!property.price || property.price === 0) {
       return 'Price on request';
@@ -652,7 +669,7 @@ const PropertiesManagement = () => {
     return formatPrice(property.price, property.currency);
   }, []);
 
-  // Options for selects (keep existing)
+  // Options for selects
   const statusOptions = [
     { value: 'all', label: 'All Status' },
     { value: 'for-sale', label: 'For Sale' },
@@ -705,8 +722,440 @@ const PropertiesManagement = () => {
     { value: 'pet-friendly', label: 'Pet Friendly' }
   ];
 
-  // Property Form Component (keep existing)
-  // ... (keep the same PropertyForm component)
+  // Property Form Component (keep the same as before)
+  const PropertyForm = ({ isEdit = false, onSubmit, onCancel }) => (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
+      <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center p-6 border-b">
+          <h2 className="text-2xl font-bold text-gray-900">
+            {isEdit ? 'Edit Property' : 'Add New Property'}
+          </h2>
+          <button
+            onClick={onCancel}
+            className="text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <X size={24} />
+          </button>
+        </div>
+
+        <form onSubmit={onSubmit} className="p-6 space-y-6">
+          {/* Basic Information */}
+          <div>
+            <h3 className="text-lg font-semibold mb-4">Basic Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Property Title *
+                </label>
+                <input
+                  type="text"
+                  required
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={propertyForm.title}
+                  onChange={(e) => handleInputChange('title', e.target.value)}
+                  placeholder="Enter property title"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Price *
+                </label>
+                <div className="flex space-x-2">
+                  <select
+                    className="px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={propertyForm.currency}
+                    onChange={(e) => handleInputChange('currency', e.target.value)}
+                  >
+                    <option value="USD">USD</option>
+                    <option value="NAN">NAN</option>
+                  </select>
+                  <input
+                    type="number"
+                    required
+                    min="0"
+                    step="0.01"
+                    className="flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={propertyForm.price}
+                    onChange={(e) => handleInputChange('price', e.target.value)}
+                    placeholder="Enter price"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Property Type *
+                </label>
+                <select
+                  required
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={propertyForm.type}
+                  onChange={(e) => handleInputChange('type', e.target.value)}
+                >
+                  {propertyTypeOptions.map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Status *
+                </label>
+                <select
+                  required
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={propertyForm.status}
+                  onChange={(e) => handleInputChange('status', e.target.value)}
+                >
+                  {statusTypeOptions.map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="mt-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Description *
+              </label>
+              <textarea
+                required
+                rows={4}
+                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value={propertyForm.description}
+                onChange={(e) => handleInputChange('description', e.target.value)}
+                placeholder="Describe the property features, location advantages, etc."
+              />
+            </div>
+          </div>
+
+          {/* IMAGE UPLOAD SECTION */}
+          <div>
+            <h3 className="text-lg font-semibold mb-4 flex items-center">
+              <ImageIcon size={20} className="mr-2" />
+              Property Images
+            </h3>
+            
+            {uploadProgress > 0 && (
+              <div className="mb-4">
+                <div className="flex justify-between text-sm text-gray-600 mb-1">
+                  <span>Uploading images...</span>
+                  <span>{uploadProgress}%</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div 
+                    className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${uploadProgress}%` }}
+                  ></div>
+                </div>
+              </div>
+            )}
+
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center mb-4">
+              <input
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={handleImageUpload}
+                disabled={uploading}
+                className="hidden"
+                id="property-images"
+              />
+              <label
+                htmlFor="property-images"
+                className={`cursor-pointer inline-flex items-center px-4 py-2 rounded-md transition-colors ${
+                  uploading 
+                    ? 'bg-gray-400 text-gray-200 cursor-not-allowed' 
+                    : 'bg-blue-500 text-white hover:bg-blue-600'
+                }`}
+              >
+                <Upload size={16} className="mr-2" />
+                {uploading ? 'Uploading...' : 'Select Images'}
+              </label>
+              <p className="mt-2 text-sm text-gray-500">
+                Upload multiple property images (JPEG, PNG, WebP)
+              </p>
+            </div>
+
+            {uploadedImages.length > 0 && (
+              <div className="mt-4">
+                <div className="flex justify-between items-center mb-3">
+                  <h4 className="text-sm font-medium text-gray-700">
+                    Uploaded Images ({uploadedImages.length})
+                  </h4>
+                  <button
+                    type="button"
+                    onClick={clearAllImages}
+                    className="text-sm text-red-600 hover:text-red-800"
+                  >
+                    Clear All
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {uploadedImages.map((image) => (
+                    <div key={image.id} className="relative group">
+                      <img
+                        src={image.url}
+                        alt={image.name}
+                        className="w-full h-24 object-cover rounded-lg border-2 border-gray-200"
+                      />
+                      <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-opacity rounded-lg flex items-center justify-center space-x-1">
+                        <button
+                          type="button"
+                          onClick={() => setAsFeatured(image.id)}
+                          className={`text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity ${
+                            featuredImageId === image.id 
+                              ? 'bg-green-500 text-white' 
+                              : 'bg-white text-gray-800 hover:bg-gray-100'
+                          }`}
+                        >
+                          {featuredImageId === image.id ? 'Featured' : 'Set Featured'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removeImage(image.id)}
+                          className="text-xs bg-red-500 text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                      {featuredImageId === image.id && (
+                        <div className="absolute top-1 left-1 bg-green-500 text-white text-xs px-1 rounded">
+                          Featured
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {uploadedImages.length === 0 && (
+              <div className="text-center py-4 text-gray-500">
+                <ImageIcon size={32} className="mx-auto mb-2 text-gray-300" />
+                <p>At least one property image is required</p>
+              </div>
+            )}
+          </div>
+
+          {/* Location */}
+          <div>
+            <h3 className="text-lg font-semibold mb-4 flex items-center">
+              <MapPin size={20} className="mr-2" />
+              Location
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Address *
+                </label>
+                <input
+                  type="text"
+                  required
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={propertyForm.location.address}
+                  onChange={(e) => handleLocationChange('address', e.target.value)}
+                  placeholder="Street address"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  City *
+                </label>
+                <input
+                  type="text"
+                  required
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={propertyForm.location.city}
+                  onChange={(e) => handleLocationChange('city', e.target.value)}
+                  placeholder="City"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  State *
+                </label>
+                <input
+                  type="text"
+                  required
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={propertyForm.location.state}
+                  onChange={(e) => handleLocationChange('state', e.target.value)}
+                  placeholder="State"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  ZIP Code *
+                </label>
+                <input
+                  type="text"
+                  required
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={propertyForm.location.zipCode}
+                  onChange={(e) => handleLocationChange('zipCode', e.target.value)}
+                  placeholder="ZIP code"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Specifications */}
+          <div>
+            <h3 className="text-lg font-semibold mb-4">Specifications</h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Bedrooms *
+                </label>
+                <input
+                  type="number"
+                  required
+                  min="0"
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={propertyForm.specifications.bedrooms}
+                  onChange={(e) => handleSpecificationsChange('bedrooms', e.target.value)}
+                  placeholder="0"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Bathrooms *
+                </label>
+                <input
+                  type="number"
+                  required
+                  min="0"
+                  step="0.5"
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={propertyForm.specifications.bathrooms}
+                  onChange={(e) => handleSpecificationsChange('bathrooms', e.target.value)}
+                  placeholder="0"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Area *
+                </label>
+                <div className="flex space-x-2">
+                  <input
+                    type="number"
+                    required
+                    min="0"
+                    className="flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={propertyForm.specifications.area}
+                    onChange={(e) => handleSpecificationsChange('area', e.target.value)}
+                    placeholder="0"
+                  />
+                  <select
+                    className="px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={propertyForm.specifications.areaUnit}
+                    onChange={(e) => handleSpecificationsChange('areaUnit', e.target.value)}
+                  >
+                    <option value="sqft">sqft</option>
+                    <option value="sqm">sqm</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Floors
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={propertyForm.specifications.floors}
+                  onChange={(e) => handleSpecificationsChange('floors', e.target.value)}
+                  placeholder="1"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Parking Spaces
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={propertyForm.specifications.parking}
+                  onChange={(e) => handleSpecificationsChange('parking', e.target.value)}
+                  placeholder="0"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Year Built
+                </label>
+                <input
+                  type="number"
+                  min="1800"
+                  max={new Date().getFullYear()}
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={propertyForm.specifications.yearBuilt}
+                  onChange={(e) => handleSpecificationsChange('yearBuilt', e.target.value)}
+                  placeholder="Year"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Amenities */}
+          <div>
+            <h3 className="text-lg font-semibold mb-4">Amenities</h3>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+              {amenityOptions.map(amenity => (
+                <label key={amenity.value} className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={propertyForm.amenities.includes(amenity.value)}
+                    onChange={() => handleAmenityToggle(amenity.value)}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="text-sm text-gray-700">{amenity.label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* Submit Buttons */}
+          <div className="flex justify-end space-x-3 pt-6 border-t">
+            <button
+              type="button"
+              onClick={onCancel}
+              className="px-6 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={uploading || uploadedImages.length === 0}
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {uploading 
+                ? (isEdit ? 'Updating Property...' : 'Creating Property...')
+                : (isEdit ? 'Update Property' : 'Create Property')
+              }
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
 
   // Loading State
   if (loading && properties.length === 0) {
@@ -818,7 +1267,7 @@ const PropertiesManagement = () => {
         </div>
       </div>
 
-      {/* Properties Table - FIXED DATA DISPLAY */}
+      {/* Properties Table - FIXED DISPLAY */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
@@ -845,97 +1294,99 @@ const PropertiesManagement = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredProperties.map((property) => (
-                <tr key={property._id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="h-10 w-10 flex-shrink-0">
-                        <img
-                          className="h-10 w-10 rounded-lg object-cover"
-                          src={getPropertyImage(property)}
-                          alt={property.title}
-                          onError={(e) => {
-                            if (e.target.src !== PLACEHOLDER_IMAGE) {
-                              e.target.src = PLACEHOLDER_IMAGE;
-                            }
-                          }}
-                        />
-                      </div>
-                      <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900 line-clamp-1">
-                          {property.title}
+              {filteredProperties.length > 0 ? (
+                filteredProperties.map((property) => (
+                  <tr key={property._id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="h-10 w-10 flex-shrink-0">
+                          <img
+                            className="h-10 w-10 rounded-lg object-cover"
+                            src={getPropertyImage(property)}
+                            alt={property.title}
+                            onError={(e) => {
+                              if (e.target.src !== PLACEHOLDER_IMAGE) {
+                                e.target.src = PLACEHOLDER_IMAGE;
+                              }
+                            }}
+                          />
                         </div>
-                        <div className="text-sm text-gray-500">
-                          {getPropertyDetails(property)}
+                        <div className="ml-4">
+                          <div className="text-sm font-medium text-gray-900 line-clamp-1">
+                            {property.title}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            {getPropertyDetails(property)}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getTypeColor(property.type)}`}>
-                      {formatPropertyType(property.type)}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {formatPropertyPrice(property)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(property.status)}`}>
-                      {formatPropertyStatus(property.status)}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {getPropertyLocation(property)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex items-center space-x-2">
-                      <button 
-                        className="text-blue-600 hover:text-blue-900 transition-colors"
-                        onClick={() => handleViewProperty(property)}
-                        title="View Property"
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getTypeColor(property.type)}`}>
+                        {formatPropertyType(property.type)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {formatPropertyPrice(property)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(property.status)}`}>
+                        {formatPropertyStatus(property.status)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {getPropertyLocation(property)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <div className="flex items-center space-x-2">
+                        <button 
+                          className="text-blue-600 hover:text-blue-900 transition-colors"
+                          onClick={() => handleViewProperty(property)}
+                          title="View Property"
+                        >
+                          <Eye size={16} />
+                        </button>
+                        <button 
+                          className="text-green-600 hover:text-green-900 transition-colors"
+                          onClick={() => handleEditProperty(property)}
+                          title="Edit Property"
+                        >
+                          <Edit size={16} />
+                        </button>
+                        <button 
+                          className="text-red-600 hover:text-red-900 transition-colors"
+                          onClick={() => handleDeleteProperty(property)}
+                          title="Delete Property"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                // Show empty state only when there are no filtered properties
+                <tr>
+                  <td colSpan="6" className="px-6 py-24 text-center">
+                    <div className="text-gray-400 text-6xl mb-4">🏠</div>
+                    <h3 className="text-lg font-medium text-gray-900">No properties found</h3>
+                    <p className="text-gray-500 mt-1">
+                      {properties.length === 0 ? 'You haven\'t added any properties yet.' : 'Try adjusting your search or filters'}
+                    </p>
+                    {properties.length === 0 && (
+                      <button
+                        onClick={handleOpenAddModal}
+                        className="mt-6 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-semibold"
                       >
-                        <Eye size={16} />
+                        Add Your First Property
                       </button>
-                      <button 
-                        className="text-green-600 hover:text-green-900 transition-colors"
-                        onClick={() => handleEditProperty(property)}
-                        title="Edit Property"
-                      >
-                        <Edit size={16} />
-                      </button>
-                      <button 
-                        className="text-red-600 hover:text-red-900 transition-colors"
-                        onClick={() => handleDeleteProperty(property)}
-                        title="Delete Property"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
+                    )}
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>
-
-        {filteredProperties.length === 0 && !loading && (
-          <div className="text-center py-12">
-            <div className="text-gray-400 text-6xl mb-4">🏠</div>
-            <h3 className="text-lg font-medium text-gray-900">No properties found</h3>
-            <p className="text-gray-500 mt-1">
-              {properties.length === 0 ? 'You haven\'t added any properties yet.' : 'Try adjusting your search or filters'}
-            </p>
-            
-            {properties.length === 0 && (
-              <button
-                onClick={handleOpenAddModal}
-                className="mt-6 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-semibold"
-              >
-                Add Your First Property
-              </button>
-            )}
-          </div>
-        )}
 
         {loading && properties.length > 0 && (
           <div className="text-center py-4">
