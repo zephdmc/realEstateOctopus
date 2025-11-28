@@ -78,8 +78,7 @@ const startServer = async () => {
       useNewUrlParser: true,
       useUnifiedTopology: true,
       retryWrites: true,
-      w: 'majority',
-      appName: 'imoitc'
+      w: 'majority'
     };
 
     logInfo('📡 Establishing database connection...');
@@ -178,67 +177,6 @@ const startServer = async () => {
       logError('🔧 Troubleshooting: Verify your MongoDB Atlas cluster is running');
     }
     
-    process.exit(1);
-  }
-};
-
-// Start the server
-startServer();
-
-// Export for testing
-export { app };
-    }
-
-    // Start the Express server
-    const server = app.start();
-    
-    // Set server instance if the property exists
-    if (app.server !== undefined) {
-      app.server = server;
-    }
-
-    logInfo(`✅ Application started successfully on port ${process.env.PORT || 3000}`);
-
-    // Graceful shutdown
-    const shutdown = async (signal) => {
-      logInfo(`📭 ${signal} received, shutting down gracefully...`);
-      
-      server.close(() => {
-        logInfo('✅ HTTP server closed');
-      });
-
-      if (dbConnection && dbConnection.readyState === 1) {
-        try {
-          await mongoose.disconnect();
-          logInfo('✅ MongoDB disconnected');
-        } catch (error) {
-          logError('❌ Error disconnecting MongoDB:', error);
-        }
-      }
-
-      setTimeout(() => {
-        logInfo('👋 Process terminated');
-        process.exit(0);
-      }, 5000);
-    };
-
-    process.on('SIGTERM', () => shutdown('SIGTERM'));
-    process.on('SIGINT', () => shutdown('SIGINT'));
-
-    // Handle uncaught exceptions
-    process.on('uncaughtException', (error) => {
-      logError('💥 Uncaught Exception:', error);
-      shutdown('UNCAUGHT_EXCEPTION');
-    });
-
-    // Handle unhandled promise rejections
-    process.on('unhandledRejection', (reason, promise) => {
-      logError('💥 Unhandled Promise Rejection at:', promise, 'reason:', reason);
-      shutdown('UNHANDLED_REJECTION');
-    });
-
-  } catch (error) {
-    logError('❌ Failed to start application:', error);
     process.exit(1);
   }
 };
