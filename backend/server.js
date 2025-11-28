@@ -54,75 +54,68 @@
 
 // // Export for testing
 // export { app };import dotenv from 'dotenv';
-// First, check if dotenv is installed and import it safely
-let dotenv;
-try {
-  dotenv = (await import('dotenv')).default;
-  dotenv.config();
-  console.log('✅ dotenv configured successfully');
-} catch (error) {
-  console.log('⚠️ dotenv not available, using environment variables directly');
-}
-
+// Simple environment check without dotenv dependency
 import app from './src/app.js';
 import { logInfo, logError } from './src/utils/logger.js';
 
 const startServer = async () => {
   try {
-    logInfo("🚀 SERVER.JS STARTING - VERSION 3");
+    logInfo("🚀 SERVER.JS STARTING - PRODUCTION VERSION");
 
-    // Check for required environment variables
-    const requiredEnvVars = ['MONGODB_URI', 'MONGODB_URL'];
-    const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
+    // Debug: Log all MongoDB-related environment variables
+    const mongoVars = {
+      MONGODB_URI: process.env.MONGODB_URI,
+      MONGODB_URL: process.env.MONGODB_URL,
+      MONGODB_URI1: process.env.MONGODB_URI1
+    };
     
-    if (missingVars.length > 0) {
-      logError(`❌ Missing required environment variables: ${missingVars.join(', ')}`);
-      logInfo('Available environment variables:', Object.keys(process.env));
-      throw new Error(`Missing environment variables: ${missingVars.join(', ')}`);
+    logInfo('🔍 MongoDB Environment Variables:', mongoVars);
+
+    // Use MONGODB_URI (which exists in your environment)
+    const MONGODB_URI = process.env.MONGODB_URI || process.env.MONGODB_URL || process.env.MONGODB_URI1;
+    
+    if (!MONGODB_URI) {
+      throw new Error('No MongoDB URI found in environment variables. Available MongoDB vars: ' + JSON.stringify(mongoVars));
     }
 
-    const MONGODB_URI = process.env.MONGODB_URI || process.env.MONGODB_URL;
-    logInfo(`🔗 MongoDB URI: ${MONGODB_URI ? 'Found' : 'Missing'}`);
+    logInfo('🔗 Connecting to MongoDB...');
 
-    let dbConnection;
+    // Direct mongoose connection
+    const mongoose = await import('mongoose');
+    
+    // Connection options
+    const options = {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+      serverSelectionTimeoutMS: 10000,
+      socketTimeoutMS: 45000,
+    };
 
-    // Try to import and use mongoose directly
-    try {
-      const mongoose = await import('mongoose');
-      
-      logInfo('🔗 Connecting to MongoDB via mongoose...');
-      
-      // Mongoose connection options
-      const options = {
-        useNewUrlParser: true,
-        useUnifiedTopology: true,
-        serverSelectionTimeoutMS: 5000,
-        socketTimeoutMS: 45000,
-      };
+    await mongoose.connect(MONGODB_URI, options);
+    
+    const dbConnection = mongoose.connection;
+    
+    // Wait for connection to be established
+    await new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error('MongoDB connection timeout (10s)'));
+      }, 10000);
 
-      await mongoose.connect(MONGODB_URI, options);
-      dbConnection = mongoose.connection;
-
-      // Wait for connection to be established
-      await new Promise((resolve, reject) => {
-        dbConnection.once('open', resolve);
-        dbConnection.on('error', reject);
-        
-        // Timeout after 10 seconds
-        setTimeout(() => reject(new Error('MongoDB connection timeout')), 10000);
+      dbConnection.once('open', () => {
+        clearTimeout(timeout);
+        resolve();
       });
 
-    } catch (dbError) {
-      logError('❌ MongoDB connection failed:', dbError);
-      throw dbError;
-    }
+      dbConnection.on('error', (error) => {
+        clearTimeout(timeout);
+        reject(error);
+      });
+    });
 
-    // Verify database connection
     if (dbConnection.readyState === 1) {
       logInfo('✅ MongoDB connected successfully');
     } else {
-      logError(`❌ MongoDB connection failed. Current state: ${dbConnection.readyState}`);
-      throw new Error(`Database connection not established. State: ${dbConnection.readyState}`);
+      throw new Error(`MongoDB connection failed. Connection state: ${dbConnection.readyState}`);
     }
 
     // Set database connection in app instance if the property exists
@@ -131,9 +124,8 @@ const startServer = async () => {
     }
 
     // Set database health status (if method exists)
-    const dbHealth = dbConnection.readyState === 1 ? 'connected' : 'disconnected';
     if (typeof app.setDatabaseHealth === 'function') {
-      app.setDatabaseHealth(dbHealth);
+      app.setDatabaseHealth('connected');
     }
 
     // Start the Express server
@@ -144,10 +136,45 @@ const startServer = async () => {
       app.server = server;
     }
 
-    logInfo('✅ Application started successfully');
+    logInfo(`✅ Application started successfully on port ${process.env.PORT || 3000}`);
 
-    // Graceful shutdown handlers
-    setupGracefulShutdown(server, dbConnection);
+    // Graceful shutdown
+    const shutdown = async (signal) => {
+      logInfo(`📭 ${signal} received, shutting down gracefully...`);
+      
+      server.close(() => {
+        logInfo('✅ HTTP server closed');
+      });
+
+      if (dbConnection && dbConnection.readyState === 1) {
+        try {
+          await mongoose.disconnect();
+          logInfo('✅ MongoDB disconnected');
+        } catch (error) {
+          logError('❌ Error disconnecting MongoDB:', error);
+        }
+      }
+
+      setTimeout(() => {
+        logInfo('👋 Process terminated');
+        process.exit(0);
+      }, 5000);
+    };
+
+    process.on('SIGTERM', () => shutdown('SIGTERM'));
+    process.on('SIGINT', () => shutdown('SIGINT'));
+
+    // Handle uncaught exceptions
+    process.on('uncaughtException', (error) => {
+      logError('💥 Uncaught Exception:', error);
+      shutdown('UNCAUGHT_EXCEPTION');
+    });
+
+    // Handle unhandled promise rejections
+    process.on('unhandledRejection', (reason, promise) => {
+      logError('💥 Unhandled Promise Rejection at:', promise, 'reason:', reason);
+      shutdown('UNHANDLED_REJECTION');
+    });
 
   } catch (error) {
     logError('❌ Failed to start application:', error);
@@ -155,61 +182,8 @@ const startServer = async () => {
   }
 };
 
-const setupGracefulShutdown = (server, dbConnection) => {
-  const shutdown = async (signal) => {
-    logInfo(`📭 ${signal} received, shutting down gracefully...`);
-    
-    let shutdownTimeout;
-    
-    // Close HTTP server
-    server.close((err) => {
-      if (err) {
-        logError('❌ Error closing HTTP server:', err);
-      } else {
-        logInfo('✅ HTTP server closed');
-      }
-    });
-
-    // Close database connection
-    if (dbConnection && dbConnection.readyState === 1) {
-      try {
-        await dbConnection.close();
-        logInfo('✅ Database connection closed');
-      } catch (dbError) {
-        logError('❌ Error closing database connection:', dbError);
-      }
-    }
-
-    // Exit process with timeout
-    shutdownTimeout = setTimeout(() => {
-      logInfo('⏰ Shutdown timeout, forcing exit');
-      process.exit(1);
-    }, 10000);
-
-    // Clear timeout and exit normally if everything closes in time
-    clearTimeout(shutdownTimeout);
-    logInfo('👋 Process terminated gracefully');
-    process.exit(0);
-  };
-
-  process.on('SIGTERM', () => shutdown('SIGTERM'));
-  process.on('SIGINT', () => shutdown('SIGINT'));
-
-  // Handle uncaught exceptions
-  process.on('uncaughtException', (error) => {
-    logError('💥 Uncaught Exception:', error);
-    shutdown('UNCAUGHT_EXCEPTION');
-  });
-
-  // Handle unhandled promise rejections
-  process.on('unhandledRejection', (reason, promise) => {
-    logError('💥 Unhandled Promise Rejection at:', promise, 'reason:', reason);
-    shutdown('UNHANDLED_REJECTION');
-  });
-};
-
 // Start the server
 startServer();
 
 // Export for testing
-export { app, startServer };
+export { app };
