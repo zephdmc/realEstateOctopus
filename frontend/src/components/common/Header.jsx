@@ -6,10 +6,18 @@ import {
   FaEnvelope, 
   FaUserCircle, 
   FaSignOutAlt,
-  FaHome
+  FaHome,
+  FaWhatsapp
 } from 'react-icons/fa';
 
 const Header = ({ onSearch, user, onLogin, onLogout }) => {
+  const handleWhatsAppClick = () => {
+    const phoneNumber = "+2349132080059";
+    const message = "Hello! I'm interested in your real estate services. Can you please provide more information?";
+    const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
+    window.open(whatsappUrl, '_blank');
+  };
+
   return (
     <header className="bg-white shadow-lg sticky top-0 z-50">
       <div className="container mx-auto px-4">
@@ -88,13 +96,48 @@ const Header = ({ onSearch, user, onLogin, onLogout }) => {
           </div>
         </div>
 
-        {/* Navigation and Search */}
-        <div className="border-t border-gray-200">
+        {/* Navigation and Search with WhatsApp */}
+        <div className="border-t border-gray-200 relative">
           <Navbar />
-          <div className="py-4">
+          <div className="py-4 relative">
+            {/* Search Bar */}
             <SearchBar onSearch={onSearch} />
+            
+            {/* Floating WhatsApp Button */}
+            <div className="absolute right-0 top-1/2 transform -translate-y-1/2 flex items-center space-x-3">
+              {/* WhatsApp Button */}
+              <button
+                onClick={handleWhatsAppClick}
+                className="flex items-center space-x-2 bg-green-500 hover:bg-green-600 text-white px-4 py-3 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 group"
+                title="Chat with us on WhatsApp"
+              >
+                <FaWhatsapp className="w-5 h-5" />
+                <span className="hidden sm:block text-sm font-medium">Chat on WhatsApp</span>
+              </button>
+
+              {/* Optional: Phone Call Button */}
+              <button
+                onClick={() => window.open('tel:+2349132080059', '_self')}
+                className="hidden md:flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 group"
+                title="Call us now"
+              >
+                <FaPhone className="w-4 h-4" />
+                <span className="text-sm font-medium">Call Now</span>
+              </button>
+            </div>
           </div>
         </div>
+      </div>
+
+      {/* Mobile Floating WhatsApp Button (for smaller screens) */}
+      <div className="fixed bottom-6 right-6 z-50 md:hidden">
+        <button
+          onClick={handleWhatsAppClick}
+          className="bg-green-500 hover:bg-green-600 text-white p-4 rounded-full shadow-2xl hover:shadow-3xl transition-all duration-300 transform hover:scale-110 animate-bounce"
+          title="Chat with us on WhatsApp"
+        >
+          <FaWhatsapp className="w-6 h-6" />
+        </button>
       </div>
     </header>
   );
