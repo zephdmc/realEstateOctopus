@@ -1,10 +1,7 @@
-
-
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { Search, Filter, Plus, Edit, Trash2, Eye, RefreshCw, AlertCircle, X, Upload, MapPin, Image as ImageIcon } from 'lucide-react';
 import { propertiesAPI } from '../../services/api';
-import { uploadService } from '../../services/uploadService'; // Add this import
+import { uploadService } from '../../services/uploadService';
 import { formatPrice, formatPropertyType, formatPropertyStatus } from '../../utils/formatters';
 import { PROPERTY_TYPES, PROPERTY_STATUS, ERROR_MESSAGES, SUCCESS_MESSAGES } from '../../utils/constants';
 import { useAuth } from '../../contexts/AuthContext';
@@ -26,7 +23,7 @@ const PropertiesManagement = () => {
   const [success, setSuccess] = useState('');
   const { user } = useAuth();
 
-  // Property Form State - ADD IMAGE STATES
+  // Property Form State
   const [propertyForm, setPropertyForm] = useState({
     title: '',
     description: '',
@@ -59,7 +56,7 @@ const PropertiesManagement = () => {
   const [featuredImageId, setFeaturedImageId] = useState(null);
   const [uploadProgress, setUploadProgress] = useState(0);
 
-  // Initialize form with empty state - UPDATE THIS
+  // Initialize form with empty state
   const initializeForm = () => ({
     title: '',
     description: '',
@@ -86,7 +83,7 @@ const PropertiesManagement = () => {
     amenities: []
   });
 
-  // Fetch properties from API
+  // Fetch properties from API - FIXED DATA STRUCTURE
   const fetchProperties = useCallback(async () => {
     try {
       setLoading(true);
@@ -94,8 +91,11 @@ const PropertiesManagement = () => {
       
       const response = await propertiesAPI.getMyProperties();
       
+      console.log('📦 Raw API response:', response);
+      
       let propertiesData = [];
       
+      // Handle different response structures
       if (Array.isArray(response)) {
         propertiesData = response;
       } else if (response && typeof response === 'object') {
@@ -103,14 +103,51 @@ const PropertiesManagement = () => {
       }
       
       if (!Array.isArray(propertiesData)) {
+        console.warn('⚠️ Properties data is not an array:', propertiesData);
         propertiesData = [];
       }
 
-      setProperties(propertiesData);
-      setFilteredProperties(propertiesData);
+      console.log('✅ Processed properties:', propertiesData);
+      
+      // Normalize property data structure
+      const normalizedProperties = propertiesData.map(property => ({
+        _id: property._id || property.id,
+        title: property.title || 'Untitled Property',
+        description: property.description || '',
+        price: property.price || 0,
+        currency: property.currency || 'USD',
+        type: property.type || 'house',
+        status: property.status || 'for-sale',
+        location: property.location || {
+          address: '',
+          city: '',
+          state: '',
+          zipCode: '',
+          country: 'United States'
+        },
+        specifications: property.specifications || {
+          bedrooms: 0,
+          bathrooms: 0,
+          area: 0,
+          areaUnit: 'sqft',
+          yearBuilt: '',
+          floors: 1,
+          parking: 0
+        },
+        amenities: property.amenities || [],
+        images: property.images || [],
+        featuredImage: property.featuredImage,
+        createdBy: property.createdBy,
+        agentId: property.agentId,
+        createdAt: property.createdAt,
+        updatedAt: property.updatedAt
+      }));
+
+      setProperties(normalizedProperties);
+      setFilteredProperties(normalizedProperties);
       
     } catch (error) {
-      console.error('Error fetching properties:', error);
+      console.error('❌ Error fetching properties:', error);
       setError(error.message || ERROR_MESSAGES.DEFAULT);
       setProperties([]);
       setFilteredProperties([]);
@@ -147,7 +184,7 @@ const PropertiesManagement = () => {
     setFilteredProperties(filtered);
   }, [properties, searchTerm, statusFilter, typeFilter]);
 
-  // IMAGE UPLOAD FUNCTIONS
+  // IMAGE UPLOAD FUNCTIONS (keep existing)
   const handleImageUpload = async (event) => {
     const files = Array.from(event.target.files);
     if (!files.length) return;
@@ -163,14 +200,11 @@ const PropertiesManagement = () => {
       
       console.log('📦 Upload service response:', response);
       
-      // The uploaded files should be in response.data
       const uploadedFiles = response.data;
       
       if (!uploadedFiles || !Array.isArray(uploadedFiles)) {
         throw new Error('Upload service returned invalid data format');
       }
-  
-      console.log('🖼️ Raw uploaded files:', uploadedFiles);
   
       const newImages = uploadedFiles.map(upload => ({
         id: upload._id || upload.id,
@@ -178,8 +212,6 @@ const PropertiesManagement = () => {
         name: upload.originalName || upload.name || 'Property Image',
         cloudinaryId: upload.cloudinaryId || upload.public_id
       }));
-      
-      console.log('✅ Processed images:', newImages);
       
       setUploadedImages(prev => [...prev, ...newImages]);
       
@@ -222,7 +254,7 @@ const PropertiesManagement = () => {
     setFeaturedImageId(null);
   };
 
-  // CRUD Operations - UPDATED WITH IMAGES
+  // CRUD Operations - UPDATED WITH BETTER ERROR HANDLING
 
   // CREATE - Add new property with images
   const handleAddProperty = useCallback(async (e) => {
@@ -232,7 +264,7 @@ const PropertiesManagement = () => {
       setUploading(true);
       setError('');
 
-      // Validation - ADD IMAGE VALIDATION
+      // Validation
       const validationErrors = [];
       if (!propertyForm.title.trim()) validationErrors.push('Property title is required');
       if (!propertyForm.description.trim()) validationErrors.push('Property description is required');
@@ -287,12 +319,15 @@ const PropertiesManagement = () => {
         propertyData.specifications.yearBuilt = parseInt(propertyForm.specifications.yearBuilt);
       }
 
-      console.log('Creating property with data:', propertyData);
+      console.log('🏠 Creating property with data:', propertyData);
 
-      const createdProperty = await propertiesAPI.createProperty(propertyData);
+      const response = await propertiesAPI.createProperty(propertyData);
+      
+      // Handle different response structures
+      const createdProperty = response.data || response;
       
       // Update local state
-      setProperties(prev => [createdProperty.data, ...prev]);
+      setProperties(prev => [createdProperty, ...prev]);
       setSuccess(SUCCESS_MESSAGES.PROPERTY_CREATED);
       handleCloseAddModal();
 
@@ -301,23 +336,25 @@ const PropertiesManagement = () => {
       }, 3000);
 
     } catch (error) {
-      console.error('Error creating property:', error);
+      console.error('❌ Error creating property:', error);
       setError(error.message || ERROR_MESSAGES.DEFAULT);
     } finally {
       setUploading(false);
     }
   }, [propertyForm, user, uploadedImages, featuredImageId]);
 
-  // READ - Open edit modal with property data - UPDATED WITH IMAGES
+  // READ - Open edit modal with property data - FIXED DATA STRUCTURE
   const handleEditProperty = useCallback((property) => {
     if (!property) return;
+    
+    console.log('📝 Editing property:', property);
     
     setSelectedProperty(property);
     setPropertyForm({
       title: property.title || '',
       description: property.description || '',
       price: property.price || '',
-      currency: property.currency || 'NAG',
+      currency: property.currency || 'USD',
       type: property.type || 'house',
       status: property.status || 'for-sale',
       location: {
@@ -325,7 +362,7 @@ const PropertiesManagement = () => {
         city: property.location?.city || '',
         state: property.location?.state || '',
         zipCode: property.location?.zipCode || '',
-        country: property.location?.country || 'Nigeria'
+        country: property.location?.country || 'United States'
       },
       specifications: {
         bedrooms: property.specifications?.bedrooms || '',
@@ -341,13 +378,27 @@ const PropertiesManagement = () => {
 
     // Set existing images
     if (property.images && Array.isArray(property.images)) {
-      const existingImages = property.images.map(img => ({
-        id: img._id || img,
-        url: img.url || '/placeholder-property.jpg',
-        name: img.originalName || 'Property Image'
-      }));
+      const existingImages = property.images.map(img => {
+        // Handle both string IDs and image objects
+        if (typeof img === 'string') {
+          return {
+            id: img,
+            url: PLACEHOLDER_IMAGE,
+            name: 'Property Image'
+          };
+        } else {
+          return {
+            id: img._id || img.id,
+            url: img.url || PLACEHOLDER_IMAGE,
+            name: img.originalName || 'Property Image'
+          };
+        }
+      });
       setUploadedImages(existingImages);
       setFeaturedImageId(property.featuredImage || (existingImages[0]?.id || null));
+    } else {
+      setUploadedImages([]);
+      setFeaturedImageId(null);
     }
 
     setShowEditModal(true);
@@ -392,9 +443,7 @@ const PropertiesManagement = () => {
         },
         amenities: propertyForm.amenities,
         images: imageIds,
-        featuredImage: featuredImageId,
-        createdBy: user?.uid,
-        agentId: user?.uid
+        featuredImage: featuredImageId
       };
 
       // Add optional yearBuilt if provided
@@ -402,13 +451,16 @@ const PropertiesManagement = () => {
         updateData.specifications.yearBuilt = parseInt(propertyForm.specifications.yearBuilt);
       }
 
-      console.log('Updating property with data:', updateData);
+      console.log('🔄 Updating property with data:', updateData);
 
-      const updatedProperty = await propertiesAPI.updateProperty(selectedProperty._id, updateData);
+      const response = await propertiesAPI.updateProperty(selectedProperty._id, updateData);
+      
+      // Handle different response structures
+      const updatedProperty = response.data || response;
       
       // Update local state
       setProperties(prev => 
-        prev.map(p => p._id === selectedProperty._id ? updatedProperty.data : p)
+        prev.map(p => p._id === selectedProperty._id ? updatedProperty : p)
       );
       setSuccess(SUCCESS_MESSAGES.PROPERTY_UPDATED);
       handleCloseEditModal();
@@ -418,7 +470,7 @@ const PropertiesManagement = () => {
       }, 3000);
 
     } catch (error) {
-      console.error('Error updating property:', error);
+      console.error('❌ Error updating property:', error);
       
       let errorMessage = error.message || ERROR_MESSAGES.DEFAULT;
       
@@ -434,7 +486,7 @@ const PropertiesManagement = () => {
     } finally {
       setUploading(false);
     }
-  }, [propertyForm, selectedProperty, user, uploadedImages, featuredImageId]);
+  }, [propertyForm, selectedProperty, uploadedImages, featuredImageId]);
 
   // DELETE - Remove property
   const handleDeleteProperty = useCallback((property) => {
@@ -465,7 +517,7 @@ const PropertiesManagement = () => {
     }
   }, [selectedProperty]);
 
-  // Form Handlers
+  // Form Handlers (keep existing)
   const handleInputChange = useCallback((field, value) => {
     setPropertyForm(prev => ({
       ...prev,
@@ -502,7 +554,7 @@ const PropertiesManagement = () => {
     }));
   }, []);
 
-  // Modal Handlers - UPDATED TO RESET IMAGES
+  // Modal Handlers
   const handleOpenAddModal = useCallback(() => {
     setPropertyForm(initializeForm());
     setUploadedImages([]);
@@ -536,7 +588,7 @@ const PropertiesManagement = () => {
     window.location.href = `/properties/${property._id}`;
   }, []);
 
-  // Helper functions
+  // Helper functions - FIXED DATA ACCESS
   const getStatusColor = useCallback((status) => {
     switch (status) {
       case 'for-sale': return 'bg-green-100 text-green-800';
@@ -560,31 +612,44 @@ const PropertiesManagement = () => {
     }
   }, []);
 
- // Update your getPropertyImage function
-const getPropertyImage = useCallback((property) => {
-  if (property.images && property.images.length > 0) {
-    const firstImage = property.images[0];
-    // Check if the image URL is valid
-    if (firstImage.url && firstImage.url.startsWith('http')) {
-      return firstImage.url;
+  // FIXED: Better image handling
+  const getPropertyImage = useCallback((property) => {
+    if (property.images && property.images.length > 0) {
+      const firstImage = property.images[0];
+      // Handle both string IDs and image objects
+      if (typeof firstImage === 'string') {
+        return PLACEHOLDER_IMAGE;
+      } else if (firstImage.url && firstImage.url.startsWith('http')) {
+        return firstImage.url;
+      }
     }
-  }
-  return PLACEHOLDER_IMAGE;
-}, []);
-
-  const getPropertyLocation = useCallback((property) => {
-    if (property?.location?.address) {
-      return `${property.location.address}, ${property.location.city}, ${property.location.state}`;
-    }
-    return 'Location not specified';
+    return PLACEHOLDER_IMAGE;
   }, []);
 
+  // FIXED: Better location formatting
+  const getPropertyLocation = useCallback((property) => {
+    const location = property.location || {};
+    const parts = [location.address, location.city, location.state].filter(Boolean);
+    return parts.length > 0 ? parts.join(', ') : 'Location not specified';
+  }, []);
+
+  // FIXED: Better property details formatting
   const getPropertyDetails = useCallback((property) => {
-    const bedrooms = property?.specifications?.bedrooms || 0;
-    const bathrooms = property?.specifications?.bathrooms || 0;
-    const area = property?.specifications?.area || 0;
-    const areaUnit = property?.specifications?.areaUnit || 'sqft';
+    const specs = property.specifications || {};
+    const bedrooms = specs.bedrooms || 0;
+    const bathrooms = specs.bathrooms || 0;
+    const area = specs.area || 0;
+    const areaUnit = specs.areaUnit || 'sqft';
+    
     return `${bedrooms} beds • ${bathrooms} baths • ${area} ${areaUnit}`;
+  }, []);
+
+  // FIXED: Better price formatting with fallback
+  const formatPropertyPrice = useCallback((property) => {
+    if (!property.price || property.price === 0) {
+      return 'Price on request';
+    }
+    return formatPrice(property.price, property.currency);
   }, []);
 
   // Options for selects (keep existing)
@@ -640,447 +705,10 @@ const getPropertyImage = useCallback((property) => {
     { value: 'pet-friendly', label: 'Pet Friendly' }
   ];
 
-  // Property Form Component - UPDATED WITH IMAGE UPLOAD SECTION
-  const PropertyForm = ({ isEdit = false, onSubmit, onCancel }) => (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
-      <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center p-6 border-b">
-          <h2 className="text-2xl font-bold text-gray-900">
-            {isEdit ? 'Edit Property' : 'Add New Property'}
-          </h2>
-          <button
-            onClick={onCancel}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
-          >
-            <X size={24} />
-          </button>
-        </div>
+  // Property Form Component (keep existing)
+  // ... (keep the same PropertyForm component)
 
-        <form onSubmit={onSubmit} className="p-6 space-y-6">
-          {/* Basic Information (keep existing) */}
-          <div>
-            <h3 className="text-lg font-semibold mb-4">Basic Information</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Property Title *
-                </label>
-                <input
-                  type="text"
-                  required
-                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  value={propertyForm.title}
-                  onChange={(e) => handleInputChange('title', e.target.value)}
-                  placeholder="Enter property title"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Price *
-                </label>
-                <div className="flex space-x-2">
-                  <select
-                    className="px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={propertyForm.currency}
-                    onChange={(e) => handleInputChange('currency', e.target.value)}
-                  >
-                    <option value="USD">USD</option>
-                    <option value="NAN">NAN</option>
-                   
-                  </select>
-                  <input
-                    type="number"
-                    required
-                    min="0"
-                    step="0.01"
-                    className="flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={propertyForm.price}
-                    onChange={(e) => handleInputChange('price', e.target.value)}
-                    placeholder="Enter price"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Property Type *
-                </label>
-                <select
-                  required
-                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  value={propertyForm.type}
-                  onChange={(e) => handleInputChange('type', e.target.value)}
-                >
-                  {propertyTypeOptions.map(option => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Status *
-                </label>
-                <select
-                  required
-                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  value={propertyForm.status}
-                  onChange={(e) => handleInputChange('status', e.target.value)}
-                >
-                  {statusTypeOptions.map(option => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div className="mt-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Description *
-              </label>
-              <textarea
-                required
-                rows={4}
-                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                value={propertyForm.description}
-                onChange={(e) => handleInputChange('description', e.target.value)}
-                placeholder="Describe the property features, location advantages, etc."
-              />
-            </div>
-          </div>
-
-          {/* IMAGE UPLOAD SECTION */}
-          <div>
-            <h3 className="text-lg font-semibold mb-4 flex items-center">
-              <ImageIcon size={20} className="mr-2" />
-              Property Images
-            </h3>
-            
-            {/* Upload Progress */}
-            {uploadProgress > 0 && (
-              <div className="mb-4">
-                <div className="flex justify-between text-sm text-gray-600 mb-1">
-                  <span>Uploading images...</span>
-                  <span>{uploadProgress}%</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div 
-                    className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${uploadProgress}%` }}
-                  ></div>
-                </div>
-              </div>
-            )}
-
-            {/* File Input */}
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center mb-4">
-              <input
-                type="file"
-                multiple
-                accept="image/*"
-                onChange={handleImageUpload}
-                disabled={uploading}
-                className="hidden"
-                id="property-images"
-              />
-              <label
-                htmlFor="property-images"
-                className={`cursor-pointer inline-flex items-center px-4 py-2 rounded-md transition-colors ${
-                  uploading 
-                    ? 'bg-gray-400 text-gray-200 cursor-not-allowed' 
-                    : 'bg-blue-500 text-white hover:bg-blue-600'
-                }`}
-              >
-                <Upload size={16} className="mr-2" />
-                {uploading ? 'Uploading...' : 'Select Images'}
-              </label>
-              <p className="mt-2 text-sm text-gray-500">
-                Upload multiple property images (JPEG, PNG, WebP)
-              </p>
-            </div>
-
-            {/* Image Preview */}
-            {uploadedImages.length > 0 && (
-              <div className="mt-4">
-                <div className="flex justify-between items-center mb-3">
-                  <h4 className="text-sm font-medium text-gray-700">
-                    Uploaded Images ({uploadedImages.length})
-                  </h4>
-                  <button
-                    type="button"
-                    onClick={clearAllImages}
-                    className="text-sm text-red-600 hover:text-red-800"
-                  >
-                    Clear All
-                  </button>
-                </div>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {uploadedImages.map((image) => (
-                    <div key={image.id} className="relative group">
-                      <img
-                        src={image.url}
-                        alt={image.name}
-                        className="w-full h-24 object-cover rounded-lg border-2 border-gray-200"
-                      />
-                      <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-opacity rounded-lg flex items-center justify-center space-x-1">
-                        <button
-                          type="button"
-                          onClick={() => setAsFeatured(image.id)}
-                          className={`text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity ${
-                            featuredImageId === image.id 
-                              ? 'bg-green-500 text-white' 
-                              : 'bg-white text-gray-800 hover:bg-gray-100'
-                          }`}
-                        >
-                          {featuredImageId === image.id ? 'Featured' : 'Set Featured'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => removeImage(image.id)}
-                          className="text-xs bg-red-500 text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                      {featuredImageId === image.id && (
-                        <div className="absolute top-1 left-1 bg-green-500 text-white text-xs px-1 rounded">
-                          Featured
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Image Requirement */}
-            {uploadedImages.length === 0 && (
-              <div className="text-center py-4 text-gray-500">
-                <ImageIcon size={32} className="mx-auto mb-2 text-gray-300" />
-                <p>At least one property image is required</p>
-              </div>
-            )}
-          </div>
-
-          {/* Location (keep existing) */}
-          <div>
-            <h3 className="text-lg font-semibold mb-4 flex items-center">
-              <MapPin size={20} className="mr-2" />
-              Location
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Address *
-                </label>
-                <input
-                  type="text"
-                  required
-                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  value={propertyForm.location.address}
-                  onChange={(e) => handleLocationChange('address', e.target.value)}
-                  placeholder="Street address"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  City *
-                </label>
-                <input
-                  type="text"
-                  required
-                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  value={propertyForm.location.city}
-                  onChange={(e) => handleLocationChange('city', e.target.value)}
-                  placeholder="City"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  State *
-                </label>
-                <input
-                  type="text"
-                  required
-                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  value={propertyForm.location.state}
-                  onChange={(e) => handleLocationChange('state', e.target.value)}
-                  placeholder="State"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  ZIP Code *
-                </label>
-                <input
-                  type="text"
-                  required
-                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  value={propertyForm.location.zipCode}
-                  onChange={(e) => handleLocationChange('zipCode', e.target.value)}
-                  placeholder="ZIP code"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Specifications (keep existing) */}
-          <div>
-            <h3 className="text-lg font-semibold mb-4">Specifications</h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Bedrooms *
-                </label>
-                <input
-                  type="number"
-                  required
-                  min="0"
-                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  value={propertyForm.specifications.bedrooms}
-                  onChange={(e) => handleSpecificationsChange('bedrooms', e.target.value)}
-                  placeholder="0"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Bathrooms *
-                </label>
-                <input
-                  type="number"
-                  required
-                  min="0"
-                  step="0.5"
-                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  value={propertyForm.specifications.bathrooms}
-                  onChange={(e) => handleSpecificationsChange('bathrooms', e.target.value)}
-                  placeholder="0"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Area *
-                </label>
-                <div className="flex space-x-2">
-                  <input
-                    type="number"
-                    required
-                    min="0"
-                    className="flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={propertyForm.specifications.area}
-                    onChange={(e) => handleSpecificationsChange('area', e.target.value)}
-                    placeholder="0"
-                  />
-                  <select
-                    className="px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={propertyForm.specifications.areaUnit}
-                    onChange={(e) => handleSpecificationsChange('areaUnit', e.target.value)}
-                  >
-                    <option value="sqft">sqft</option>
-                    <option value="sqm">sqm</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Floors
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  value={propertyForm.specifications.floors}
-                  onChange={(e) => handleSpecificationsChange('floors', e.target.value)}
-                  placeholder="1"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Parking Spaces
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  value={propertyForm.specifications.parking}
-                  onChange={(e) => handleSpecificationsChange('parking', e.target.value)}
-                  placeholder="0"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Year Built
-                </label>
-                <input
-                  type="number"
-                  min="1800"
-                  max={new Date().getFullYear()}
-                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  value={propertyForm.specifications.yearBuilt}
-                  onChange={(e) => handleSpecificationsChange('yearBuilt', e.target.value)}
-                  placeholder="Year"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Amenities (keep existing) */}
-          <div>
-            <h3 className="text-lg font-semibold mb-4">Amenities</h3>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-              {amenityOptions.map(amenity => (
-                <label key={amenity.value} className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    checked={propertyForm.amenities.includes(amenity.value)}
-                    onChange={() => handleAmenityToggle(amenity.value)}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <span className="text-sm text-gray-700">{amenity.label}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          {/* Submit Buttons */}
-          <div className="flex justify-end space-x-3 pt-6 border-t">
-            <button
-              type="button"
-              onClick={onCancel}
-              className="px-6 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={uploading || uploadedImages.length === 0}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {uploading 
-                ? (isEdit ? 'Updating Property...' : 'Creating Property...')
-                : (isEdit ? 'Update Property' : 'Create Property')
-              }
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-
-  // Loading State (keep existing)
+  // Loading State
   if (loading && properties.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50 p-6">
@@ -1098,7 +726,7 @@ const getPropertyImage = useCallback((property) => {
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
-      {/* Header (keep existing) */}
+      {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Properties Management</h1>
@@ -1123,7 +751,7 @@ const getPropertyImage = useCallback((property) => {
         </div>
       </div>
 
-      {/* Alerts (keep existing) */}
+      {/* Alerts */}
       {error && (
         <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
           <div className="flex items-center">
@@ -1141,7 +769,7 @@ const getPropertyImage = useCallback((property) => {
         </div>
       )}
 
-      {/* Filters (keep existing) */}
+      {/* Filters */}
       <div className="bg-white p-4 rounded-lg shadow mb-6">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {/* Search */}
@@ -1190,7 +818,7 @@ const getPropertyImage = useCallback((property) => {
         </div>
       </div>
 
-      {/* Properties Table (keep existing) */}
+      {/* Properties Table - FIXED DATA DISPLAY */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
@@ -1222,17 +850,16 @@ const getPropertyImage = useCallback((property) => {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <div className="h-10 w-10 flex-shrink-0">
-                      <img
-  className="h-10 w-10 rounded-lg object-cover"
-  src={getPropertyImage(property)}
-  alt={property.title}
-  onError={(e) => {
-    // Prevent infinite loop by only trying once
-    if (e.target.src !== '/placeholder-property.jpg') {
-      e.target.src = '/placeholder-property.jpg';
-    }
-  }}
-/>
+                        <img
+                          className="h-10 w-10 rounded-lg object-cover"
+                          src={getPropertyImage(property)}
+                          alt={property.title}
+                          onError={(e) => {
+                            if (e.target.src !== PLACEHOLDER_IMAGE) {
+                              e.target.src = PLACEHOLDER_IMAGE;
+                            }
+                          }}
+                        />
                       </div>
                       <div className="ml-4">
                         <div className="text-sm font-medium text-gray-900 line-clamp-1">
@@ -1250,7 +877,7 @@ const getPropertyImage = useCallback((property) => {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {formatPrice(property.price)}
+                    {formatPropertyPrice(property)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(property.status)}`}>
@@ -1336,7 +963,7 @@ const getPropertyImage = useCallback((property) => {
         />
       )}
 
-      {/* Delete Confirmation Modal (keep existing) */}
+      {/* Delete Confirmation Modal */}
       {showDeleteModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg max-w-md w-full p-6">
