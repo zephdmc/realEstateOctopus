@@ -43,7 +43,7 @@ const FeaturedProperties = ({
   // If we have an error, show a simple error message
   if (error) {
     return (
-      <section className={`py-4 md:py-16 bg-gray-50 ${className}`}>
+      <section className={`py-2 md:py-16 bg-gray-50 ${className}`}>
         <WideContainer>
           <div className="text-center">
             <div className="bg-white rounded-2xl shadow-lg p-12 max-w-2xl mx-auto">
@@ -66,7 +66,7 @@ const FeaturedProperties = ({
   }
 
   return (
-    <section className={`py-4 md:py-16 bg-gray-50 ${className}`}>
+    <section className={`py-2 md:py-16 bg-gray-50 ${className}`}>
       <WideContainer>
         {/* Header */}
         <div className="text-center mb-12">

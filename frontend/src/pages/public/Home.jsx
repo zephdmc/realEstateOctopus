@@ -101,7 +101,7 @@ const Home = () => {
       </section>
 
       {/* Featured Properties Section */}
-      <section className="py-16 bg-gradient-to-br from-blue-50 via-white to-blue-50 relative overflow-hidden">
+      <section className="py-2 py-16 bg-gradient-to-br from-blue-50 via-white to-blue-50 relative overflow-hidden">
         {/* Background Pattern */}
         <div className="absolute inset-0 opacity-5">
           <div className="absolute top-0 left-0 w-32 h-32 bg-blue-200 rounded-full blur-3xl"></div>
