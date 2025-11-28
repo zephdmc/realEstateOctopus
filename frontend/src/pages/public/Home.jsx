@@ -213,13 +213,13 @@ const Home = () => {
       
       <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
         <Link
-          href="/properties"
+          to="/properties"
           className="bg-white text-blue-600 px-8 py-4 rounded-xl hover:bg-blue-50 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl hover:scale-105 min-w-[200px] text-center"
         >
           Browse Properties
         </Link>
         <Link
-          href="/contact"
+          to="/contact"
           className="border-2 border-white text-white px-8 py-4 rounded-xl hover:bg-white hover:text-blue-600 transition-all duration-300 font-semibold hover:shadow-xl hover:scale-105 min-w-[200px] text-center"
         >
           Contact Agent

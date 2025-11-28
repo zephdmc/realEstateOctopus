@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import MainLayout from '../../components/layout/MainLayout';
 import { WideContainer, SplitContainer } from '../../components/layout/PageContainer';
 
@@ -103,7 +104,7 @@ const Contact = () => {
               <h3 className="text-xl font-semibold text-gray-900 mb-6">Get in Touch</h3>
               <div className="grid grid-cols-1 gap-4">
                 {contactMethods.map((method, index) => (
-                  <a
+                  <Link
                     key={index}
                     href={method.action}
                     className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-all duration-300 hover:border-blue-200"
@@ -116,7 +117,7 @@ const Contact = () => {
                         <p className="text-blue-600 font-semibold mt-2">{method.details}</p>
                       </div>
                     </div>
-                  </a>
+                  </Link>
                 ))}
               </div>
             </div>
