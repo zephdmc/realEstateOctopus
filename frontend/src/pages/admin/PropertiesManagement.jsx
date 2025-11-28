@@ -299,91 +299,95 @@ const fetchProperties = useCallback(async () => {
   };
 
   // CRUD Operations
-  const handleAddProperty = useCallback(async (e) => {
-    e.preventDefault();
-    
-    try {
-      setUploading(true);
-      setError('');
+  // CREATE - Add new property with images - FIXED
+const handleAddProperty = useCallback(async (e) => {
+  e.preventDefault();
+  
+  try {
+    setUploading(true);
+    setError('');
 
-      // Validation
-      const validationErrors = [];
-      if (!propertyForm.title.trim()) validationErrors.push('Property title is required');
-      if (!propertyForm.description.trim()) validationErrors.push('Property description is required');
-      if (!propertyForm.price || propertyForm.price <= 0) validationErrors.push('Valid price is required');
-      if (!propertyForm.location.address.trim()) validationErrors.push('Address is required');
-      if (!propertyForm.location.city.trim()) validationErrors.push('City is required');
-      if (!propertyForm.location.state.trim()) validationErrors.push('State is required');
-      if (!propertyForm.location.zipCode.trim()) validationErrors.push('ZIP code is required');
-      if (!propertyForm.specifications.bedrooms || propertyForm.specifications.bedrooms < 0) validationErrors.push('Number of bedrooms is required');
-      if (!propertyForm.specifications.bathrooms || propertyForm.specifications.bathrooms < 0) validationErrors.push('Number of bathrooms is required');
-      if (!propertyForm.specifications.area || propertyForm.specifications.area < 0) validationErrors.push('Property area is required');
-      if (uploadedImages.length === 0) validationErrors.push('At least one property image is required');
+    // Validation
+    const validationErrors = [];
+    if (!propertyForm.title.trim()) validationErrors.push('Property title is required');
+    if (!propertyForm.description.trim()) validationErrors.push('Property description is required');
+    if (!propertyForm.price || propertyForm.price <= 0) validationErrors.push('Valid price is required');
+    if (!propertyForm.location.address.trim()) validationErrors.push('Address is required');
+    if (!propertyForm.location.city.trim()) validationErrors.push('City is required');
+    if (!propertyForm.location.state.trim()) validationErrors.push('State is required');
+    if (!propertyForm.location.zipCode.trim()) validationErrors.push('ZIP code is required');
+    if (!propertyForm.specifications.bedrooms || propertyForm.specifications.bedrooms < 0) validationErrors.push('Number of bedrooms is required');
+    if (!propertyForm.specifications.bathrooms || propertyForm.specifications.bathrooms < 0) validationErrors.push('Number of bathrooms is required');
+    if (!propertyForm.specifications.area || propertyForm.specifications.area < 0) validationErrors.push('Property area is required');
+    if (uploadedImages.length === 0) validationErrors.push('At least one property image is required');
 
-      if (validationErrors.length > 0) {
-        throw new Error(validationErrors.join(', '));
-      }
-
-      // Prepare property data with images
-      const imageIds = uploadedImages.map(img => img.id);
-      
-      const propertyData = {
-        title: propertyForm.title.trim(),
-        description: propertyForm.description.trim(),
-        price: parseFloat(propertyForm.price),
-        currency: propertyForm.currency,
-        type: propertyForm.type,
-        status: propertyForm.status,
-        location: {
-          address: propertyForm.location.address.trim(),
-          city: propertyForm.location.city.trim(),
-          state: propertyForm.location.state.trim(),
-          zipCode: propertyForm.location.zipCode.trim(),
-          country: propertyForm.location.country
-        },
-        specifications: {
-          bedrooms: parseInt(propertyForm.specifications.bedrooms),
-          bathrooms: parseFloat(propertyForm.specifications.bathrooms),
-          area: parseInt(propertyForm.specifications.area),
-          areaUnit: propertyForm.specifications.areaUnit,
-          floors: parseInt(propertyForm.specifications.floors) || 1,
-          parking: parseInt(propertyForm.specifications.parking) || 0
-        },
-        amenities: propertyForm.amenities,
-        images: imageIds,
-        featuredImage: featuredImageId,
-        createdBy: user?.uid,
-        agentId: user?.uid
-      };
-
-      // Add optional yearBuilt if provided
-      if (propertyForm.specifications.yearBuilt && propertyForm.specifications.yearBuilt.trim()) {
-        propertyData.specifications.yearBuilt = parseInt(propertyForm.specifications.yearBuilt);
-      }
-
-      console.log('🏠 Creating property with data:', propertyData);
-
-      const response = await propertiesAPI.createProperty(propertyData);
-      
-      // Handle different response structures
-      const createdProperty = response.data || response;
-      
-      // Update local state
-      setProperties(prev => [createdProperty, ...prev]);
-      setSuccess(SUCCESS_MESSAGES.PROPERTY_CREATED);
-      handleCloseAddModal();
-
-      setTimeout(() => {
-        setSuccess('');
-      }, 3000);
-
-    } catch (error) {
-      console.error('❌ Error creating property:', error);
-      setError(error.message || ERROR_MESSAGES.DEFAULT);
-    } finally {
-      setUploading(false);
+    if (validationErrors.length > 0) {
+      throw new Error(validationErrors.join(', '));
     }
-  }, [propertyForm, user, uploadedImages, featuredImageId]);
+
+    // Prepare property data with images
+    const imageIds = uploadedImages.map(img => img.id);
+    
+    const propertyData = {
+      title: propertyForm.title.trim(),
+      description: propertyForm.description.trim(),
+      price: parseFloat(propertyForm.price),
+      currency: propertyForm.currency,
+      type: propertyForm.type,
+      status: propertyForm.status,
+      location: {
+        address: propertyForm.location.address.trim(),
+        city: propertyForm.location.city.trim(),
+        state: propertyForm.location.state.trim(),
+        zipCode: propertyForm.location.zipCode.trim(),
+        country: propertyForm.location.country
+      },
+      specifications: {
+        bedrooms: parseInt(propertyForm.specifications.bedrooms),
+        bathrooms: parseFloat(propertyForm.specifications.bathrooms),
+        area: parseInt(propertyForm.specifications.area),
+        areaUnit: propertyForm.specifications.areaUnit,
+        floors: parseInt(propertyForm.specifications.floors) || 1,
+        parking: parseInt(propertyForm.specifications.parking) || 0
+      },
+      amenities: propertyForm.amenities,
+      images: imageIds,
+      featuredImage: featuredImageId,
+      createdBy: user?.uid,
+      agentId: user?.uid
+    };
+
+    // Add optional yearBuilt if provided - FIXED
+    if (propertyForm.specifications.yearBuilt) {
+      const yearBuiltStr = String(propertyForm.specifications.yearBuilt).trim();
+      if (yearBuiltStr) {
+        propertyData.specifications.yearBuilt = parseInt(yearBuiltStr);
+      }
+    }
+
+    console.log('🏠 Creating property with data:', propertyData);
+
+    const response = await propertiesAPI.createProperty(propertyData);
+    
+    // Handle different response structures
+    const createdProperty = response.data || response;
+    
+    // Update local state
+    setProperties(prev => [createdProperty, ...prev]);
+    setSuccess(SUCCESS_MESSAGES.PROPERTY_CREATED);
+    handleCloseAddModal();
+
+    setTimeout(() => {
+      setSuccess('');
+    }, 3000);
+
+  } catch (error) {
+    console.error('❌ Error creating property:', error);
+    setError(error.message || ERROR_MESSAGES.DEFAULT);
+  } finally {
+    setUploading(false);
+  }
+}, [propertyForm, user, uploadedImages, featuredImageId]);
 
   // READ - Open edit modal with property data
   const handleEditProperty = useCallback((property) => {
@@ -446,87 +450,92 @@ const fetchProperties = useCallback(async () => {
   }, []);
 
   // UPDATE - Update existing property with images
-  const handleUpdateProperty = useCallback(async (e) => {
-    e.preventDefault();
-    
-    try {
-      setUploading(true);
-      setError('');
+  // UPDATE - Update existing property with images - FIXED
+const handleUpdateProperty = useCallback(async (e) => {
+  e.preventDefault();
+  
+  try {
+    setUploading(true);
+    setError('');
 
-      if (!selectedProperty) {
-        throw new Error('No property selected for update');
-      }
-
-      // Prepare update data with images
-      const imageIds = uploadedImages.map(img => img.id);
-      
-      const updateData = {
-        title: propertyForm.title.trim(),
-        description: propertyForm.description.trim(),
-        price: parseFloat(propertyForm.price),
-        currency: propertyForm.currency,
-        type: propertyForm.type,
-        status: propertyForm.status,
-        location: {
-          address: propertyForm.location.address.trim(),
-          city: propertyForm.location.city.trim(),
-          state: propertyForm.location.state.trim(),
-          zipCode: propertyForm.location.zipCode.trim(),
-          country: propertyForm.location.country
-        },
-        specifications: {
-          bedrooms: parseInt(propertyForm.specifications.bedrooms),
-          bathrooms: parseFloat(propertyForm.specifications.bathrooms),
-          area: parseInt(propertyForm.specifications.area),
-          areaUnit: propertyForm.specifications.areaUnit,
-          floors: parseInt(propertyForm.specifications.floors) || 1,
-          parking: parseInt(propertyForm.specifications.parking) || 0
-        },
-        amenities: propertyForm.amenities,
-        images: imageIds,
-        featuredImage: featuredImageId
-      };
-
-      // Add optional yearBuilt if provided
-      if (propertyForm.specifications.yearBuilt && propertyForm.specifications.yearBuilt.trim()) {
-        updateData.specifications.yearBuilt = parseInt(propertyForm.specifications.yearBuilt);
-      }
-
-      console.log('🔄 Updating property with data:', updateData);
-
-      const response = await propertiesAPI.updateProperty(selectedProperty._id, updateData);
-      
-      const updatedProperty = response.data || response;
-      
-      // Update local state
-      setProperties(prev => 
-        prev.map(p => p._id === selectedProperty._id ? updatedProperty : p)
-      );
-      setSuccess(SUCCESS_MESSAGES.PROPERTY_UPDATED);
-      handleCloseEditModal();
-
-      setTimeout(() => {
-        setSuccess('');
-      }, 3000);
-
-    } catch (error) {
-      console.error('❌ Error updating property:', error);
-      
-      let errorMessage = error.message || ERROR_MESSAGES.DEFAULT;
-      
-      if (error.status === 400 && error.data) {
-        if (error.data.details && error.data.details.length > 0) {
-          errorMessage = `Validation failed: ${error.data.details.join(', ')}`;
-        } else if (error.data.message) {
-          errorMessage = error.data.message;
-        }
-      }
-      
-      setError(errorMessage);
-    } finally {
-      setUploading(false);
+    if (!selectedProperty) {
+      throw new Error('No property selected for update');
     }
-  }, [propertyForm, selectedProperty, uploadedImages, featuredImageId]);
+
+    // Prepare update data with images
+    const imageIds = uploadedImages.map(img => img.id);
+    
+    const updateData = {
+      title: propertyForm.title.trim(),
+      description: propertyForm.description.trim(),
+      price: parseFloat(propertyForm.price),
+      currency: propertyForm.currency,
+      type: propertyForm.type,
+      status: propertyForm.status,
+      location: {
+        address: propertyForm.location.address.trim(),
+        city: propertyForm.location.city.trim(),
+        state: propertyForm.location.state.trim(),
+        zipCode: propertyForm.location.zipCode.trim(),
+        country: propertyForm.location.country
+      },
+      specifications: {
+        bedrooms: parseInt(propertyForm.specifications.bedrooms),
+        bathrooms: parseFloat(propertyForm.specifications.bathrooms),
+        area: parseInt(propertyForm.specifications.area),
+        areaUnit: propertyForm.specifications.areaUnit,
+        floors: parseInt(propertyForm.specifications.floors) || 1,
+        parking: parseInt(propertyForm.specifications.parking) || 0
+      },
+      amenities: propertyForm.amenities,
+      images: imageIds,
+      featuredImage: featuredImageId
+    };
+
+    // Add optional yearBuilt if provided - FIXED
+    if (propertyForm.specifications.yearBuilt) {
+      // Convert to string first to check if it's not empty, then parse to integer
+      const yearBuiltStr = String(propertyForm.specifications.yearBuilt).trim();
+      if (yearBuiltStr) {
+        updateData.specifications.yearBuilt = parseInt(yearBuiltStr);
+      }
+    }
+
+    console.log('🔄 Updating property with data:', updateData);
+
+    const response = await propertiesAPI.updateProperty(selectedProperty._id, updateData);
+    
+    const updatedProperty = response.data || response;
+    
+    // Update local state
+    setProperties(prev => 
+      prev.map(p => p._id === selectedProperty._id ? updatedProperty : p)
+    );
+    setSuccess(SUCCESS_MESSAGES.PROPERTY_UPDATED);
+    handleCloseEditModal();
+
+    setTimeout(() => {
+      setSuccess('');
+    }, 3000);
+
+  } catch (error) {
+    console.error('❌ Error updating property:', error);
+    
+    let errorMessage = error.message || ERROR_MESSAGES.DEFAULT;
+    
+    if (error.status === 400 && error.data) {
+      if (error.data.details && error.data.details.length > 0) {
+        errorMessage = `Validation failed: ${error.data.details.join(', ')}`;
+      } else if (error.data.message) {
+        errorMessage = error.data.message;
+      }
+    }
+    
+    setError(errorMessage);
+  } finally {
+    setUploading(false);
+  }
+}, [propertyForm, selectedProperty, uploadedImages, featuredImageId]);
 
   // DELETE - Remove property
   const handleDeleteProperty = useCallback((property) => {
@@ -1315,7 +1324,6 @@ const fetchProperties = useCallback(async () => {
                 </th>
               </tr>
             </thead>
-            // In the table body, replace with this more explicit rendering:
 <tbody className="bg-white divide-y divide-gray-200">
   {filteredProperties.length > 0 ? (
     filteredProperties.map((property) => {
