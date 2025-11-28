@@ -60,72 +60,133 @@ import { logInfo, logError } from './src/utils/logger.js';
 
 const startServer = async () => {
   try {
-    logInfo("🚀 SERVER.JS STARTING - PRODUCTION VERSION");
+    logInfo("🚀 SERVER.JS STARTING - PRODUCTION READY");
 
-    // Debug: Log all MongoDB-related environment variables
-    const mongoVars = {
-      MONGODB_URI: process.env.MONGODB_URI,
-      MONGODB_URL: process.env.MONGODB_URL,
-      MONGODB_URI1: process.env.MONGODB_URI1
-    };
-    
-    logInfo('🔍 MongoDB Environment Variables:', mongoVars);
-
-    // Use MONGODB_URI (which exists in your environment)
-    const MONGODB_URI = process.env.MONGODB_URI || process.env.MONGODB_URL || process.env.MONGODB_URI1;
+    const MONGODB_URI = process.env.MONGODB_URI;
     
     if (!MONGODB_URI) {
-      throw new Error('No MongoDB URI found in environment variables. Available MongoDB vars: ' + JSON.stringify(mongoVars));
+      throw new Error('MONGODB_URI environment variable is required');
     }
 
-    logInfo('🔗 Connecting to MongoDB...');
+    logInfo('🔗 Connecting to MongoDB Atlas...');
 
-    // Direct mongoose connection
+    // Import mongoose and connect directly
     const mongoose = await import('mongoose');
     
-    // Connection options
+    // Connection options for MongoDB Atlas
     const options = {
       useNewUrlParser: true,
       useUnifiedTopology: true,
-      serverSelectionTimeoutMS: 10000,
-      socketTimeoutMS: 45000,
+      retryWrites: true,
+      w: 'majority',
+      appName: 'imoitc'
     };
 
+    logInfo('📡 Establishing database connection...');
+    
+    // Simple connection without complex event handling
     await mongoose.connect(MONGODB_URI, options);
     
     const dbConnection = mongoose.connection;
     
-    // Wait for connection to be established
-    await new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        reject(new Error('MongoDB connection timeout (10s)'));
-      }, 10000);
-
-      dbConnection.once('open', () => {
-        clearTimeout(timeout);
-        resolve();
-      });
-
-      dbConnection.on('error', (error) => {
-        clearTimeout(timeout);
-        reject(error);
-      });
-    });
-
+    // Check connection state
+    logInfo(`📊 MongoDB connection state: ${dbConnection.readyState}`);
+    
     if (dbConnection.readyState === 1) {
-      logInfo('✅ MongoDB connected successfully');
+      logInfo('✅ MongoDB Atlas connected successfully');
     } else {
-      throw new Error(`MongoDB connection failed. Connection state: ${dbConnection.readyState}`);
+      // Wait a moment and check again
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      if (dbConnection.readyState === 1) {
+        logInfo('✅ MongoDB Atlas connected successfully after wait');
+      } else {
+        throw new Error(`MongoDB connection failed. State: ${dbConnection.readyState}`);
+      }
     }
 
-    // Set database connection in app instance if the property exists
+    // Set database connection in app instance if needed
     if (app.dbConnection !== undefined) {
       app.dbConnection = dbConnection;
+      logInfo('✅ Database connection set in app instance');
     }
 
-    // Set database health status (if method exists)
+    // Set database health status if method exists
     if (typeof app.setDatabaseHealth === 'function') {
       app.setDatabaseHealth('connected');
+      logInfo('✅ Database health status set');
+    }
+
+    // Start the Express server
+    logInfo('🚀 Starting Express server...');
+    const server = app.start();
+    
+    // Set server instance if needed
+    if (app.server !== undefined) {
+      app.server = server;
+    }
+
+    const port = process.env.PORT || 3000;
+    logInfo(`✅ Application started successfully on port ${port}`);
+    logInfo(`🌐 MongoDB Database: realestate`);
+    logInfo(`🔗 MongoDB Cluster: imoitc`);
+
+    // Graceful shutdown handlers
+    const gracefulShutdown = async (signal) => {
+      logInfo(`\n📭 ${signal} received, shutting down gracefully...`);
+      
+      // Close HTTP server
+      server.close(() => {
+        logInfo('✅ HTTP server closed');
+      });
+
+      // Close MongoDB connection
+      if (dbConnection.readyState === 1) {
+        try {
+          await mongoose.disconnect();
+          logInfo('✅ MongoDB connection closed');
+        } catch (error) {
+          logError('❌ Error closing MongoDB connection:', error);
+        }
+      }
+
+      logInfo('👋 Process terminated gracefully');
+      process.exit(0);
+    };
+
+    // Handle process signals
+    process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+    process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+    // Handle uncaught exceptions
+    process.on('uncaughtException', (error) => {
+      logError('💥 Uncaught Exception:', error);
+      gracefulShutdown('UNCAUGHT_EXCEPTION');
+    });
+
+    // Handle unhandled promise rejections
+    process.on('unhandledRejection', (reason, promise) => {
+      logError('💥 Unhandled Promise Rejection at:', promise, 'reason:', reason);
+      gracefulShutdown('UNHANDLED_REJECTION');
+    });
+
+  } catch (error) {
+    logError('❌ Failed to start application:', error);
+    
+    // Provide specific MongoDB connection troubleshooting
+    if (error.name === 'MongoNetworkError' || error.message.includes('ECONNREFUSED')) {
+      logError('🔧 Troubleshooting: Check if your MongoDB Atlas IP whitelist includes Render.com IP addresses');
+      logError('🔧 Troubleshooting: Verify your MongoDB Atlas cluster is running');
+    }
+    
+    process.exit(1);
+  }
+};
+
+// Start the server
+startServer();
+
+// Export for testing
+export { app };
     }
 
     // Start the Express server
