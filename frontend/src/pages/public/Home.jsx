@@ -109,7 +109,7 @@ const Home = () => {
         </div>
         
         <WideContainer>
-          <div className="text-center mb-12 relative z-10">
+          <div className="text-center mb-4 md:mb-8 relative z-10">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
               Featured Properties
             </h2>

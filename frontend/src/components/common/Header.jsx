@@ -130,7 +130,7 @@ const Header = ({ onSearch, user, onLogin, onLogout }) => {
       </div>
 
       {/* Mobile Floating WhatsApp Button (for smaller screens) */}
-      <div className="fixed bottom-6 right-6 z-50 md:hidden">
+      {/* <div className="fixed bottom-6 right-6 z-50 md:hidden">
         <button
           onClick={handleWhatsAppClick}
           className="bg-green-500 hover:bg-green-600 text-white p-4 rounded-full shadow-2xl hover:shadow-3xl transition-all duration-300 transform hover:scale-110 animate-bounce"
@@ -138,7 +138,7 @@ const Header = ({ onSearch, user, onLogin, onLogout }) => {
         >
           <FaWhatsapp className="w-6 h-6" />
         </button>
-      </div>
+      </div> */}
     </header>
   );
 };
