@@ -60,7 +60,7 @@ import { logInfo, logError } from './src/utils/logger.js';
 
 const startServer = async () => {
   try {
-    logInfo("🚀 SERVER.JS STARTING - MONGOOSE v7 COMPATIBLE");
+    logInfo("🚀 SERVER.JS STARTING - MODERN MONGOOSE");
 
     const MONGODB_URI = process.env.MONGODB_URI;
     
@@ -71,50 +71,37 @@ const startServer = async () => {
     logInfo('🔗 Connecting to MongoDB Atlas...');
 
     try {
-      // Import mongoose - modern versions have different API
+      // Import mongoose
       const mongoose = await import('mongoose');
       logInfo('✅ Mongoose imported successfully');
       
-      // For mongoose v6+, connection events are set up differently
-      // Don't set up event listeners on mongoose.connection directly
-      
       logInfo('📡 Establishing database connection...');
       
-      // Modern mongoose connection - simpler approach
+      // Modern mongoose connection - the connection is established but we don't need the connection object
       await mongoose.connect(MONGODB_URI, {
-        // These options are the main ones needed for modern mongoose
         serverSelectionTimeoutMS: 10000,
         socketTimeoutMS: 45000,
       });
       
-      logInfo('✅ Mongoose connect() completed successfully');
+      logInfo('✅ MongoDB connected successfully');
       
-      // Get the connection - in modern mongoose, this should be available after connect
-      const dbConnection = mongoose.connection;
+      // In modern mongoose, we don't need to access mongoose.connection for basic operations
+      // The connection is established and we can proceed
       
-      if (!dbConnection) {
-        throw new Error('Mongoose connection object is not available');
-      }
-      
-      logInfo(`📊 MongoDB connection state: ${dbConnection.readyState} (1=connected)`);
-
-      // Check if we're connected
-      if (dbConnection.readyState === 1) {
-        logInfo('✅ MongoDB connected successfully');
-      } else {
-        // Wait a bit and check again
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        if (dbConnection.readyState === 1) {
-          logInfo('✅ MongoDB connected successfully after wait');
-        } else {
-          throw new Error(`MongoDB connection not established. State: ${dbConnection.readyState}`);
+      // Optional: Try to get connection info but don't fail if it's not available
+      try {
+        const dbConnection = mongoose.connection;
+        if (dbConnection) {
+          logInfo(`📊 MongoDB connection state: ${dbConnection.readyState}`);
+          
+          // Set database connection in app instance if needed
+          if (app.dbConnection !== undefined) {
+            app.dbConnection = dbConnection;
+            logInfo('✅ Database connection set in app instance');
+          }
         }
-      }
-
-      // Set database connection in app instance if needed
-      if (app.dbConnection !== undefined) {
-        app.dbConnection = dbConnection;
-        logInfo('✅ Database connection set in app instance');
+      } catch (connectionError) {
+        logInfo('ℹ️ Connection object not available, continuing without it...');
       }
 
       // Set database health status if method exists
@@ -182,15 +169,6 @@ const startServer = async () => {
 
   } catch (error) {
     logError('❌ Failed to start application:', error);
-    
-    // Provide specific MongoDB connection troubleshooting
-    if (error.name === 'MongoServerSelectionError') {
-      logError('🔧 Troubleshooting: Check if your MongoDB Atlas IP whitelist includes Render.com IP addresses');
-      logError('🔧 Troubleshooting: Verify your MongoDB Atlas cluster is running');
-    } else if (error.name === 'MongoParseError') {
-      logError('🔧 Troubleshooting: Check your MongoDB connection string format');
-    }
-    
     process.exit(1);
   }
 };
