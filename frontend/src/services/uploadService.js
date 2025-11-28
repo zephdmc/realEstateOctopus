@@ -37,25 +37,50 @@ class UploadService {
    * @param {function} onProgress - Progress callback
    * @returns {Promise} Upload response
    */
-  async uploadMultipleFiles(files, category = 'property', description = '', tags = [], onProgress = null) {
+ // frontend/src/services/uploadService.js
+
+async uploadMultipleFiles(files, category = 'property', description = '', tags = [], onProgress = null) {
     try {
       if (!files || !Array.isArray(files) || files.length === 0) {
         throw new Error('No files provided for upload');
       }
-
+  
       console.log(`📤 Uploading ${files.length} files`, { 
         category, 
         fileNames: files.map(f => f.name),
         totalSize: this._formatFileSize(files.reduce((acc, file) => acc + file.size, 0))
       });
-
+  
       const response = await uploadAPI.uploadMultipleFiles(files, category, description, tags, onProgress);
       
+      // FIX: Handle different response structures
+      let uploadedFiles = [];
+      
+      if (Array.isArray(response.data)) {
+        uploadedFiles = response.data;
+      } else if (response.data && Array.isArray(response.data.files)) {
+        uploadedFiles = response.data.files;
+      } else if (Array.isArray(response)) {
+        uploadedFiles = response; // If API returns array directly
+      } else if (response && response.files) {
+        uploadedFiles = response.files;
+      } else {
+        console.warn('Unexpected response format:', response);
+        throw new Error('Invalid response format from upload API');
+      }
+  
       console.log('✅ Multiple files upload successful:', {
-        count: response.data.length,
-        files: response.data.map(f => f.originalName)
+        count: uploadedFiles.length,
+        files: uploadedFiles.map(f => f.originalName || f.name)
       });
-      return response;
+      
+      // Return consistent structure
+      return {
+        data: uploadedFiles,
+        success: true,
+        count: uploadedFiles.length
+      };
+      
     } catch (error) {
       console.error('❌ Multiple files upload failed:', error);
       throw this._enhanceError(error, 'uploadMultipleFiles');
@@ -378,17 +403,39 @@ class UploadService {
    * @param {string} method - Method name where error occurred
    * @returns {Error} Enhanced error
    */
-  _enhanceError(error, method) {
+//   _enhanceError(error, method) {
+//     const enhancedError = new Error(error.message || 'Upload service error');
+//     enhancedError.originalError = error;
+//     enhancedError.method = method;
+//     enhancedError.timestamp = new Date().toISOString();
+//     enhancedError.status = error.status;
+//     enhancedError.code = error.code;
+
+//     return enhancedError;
+//   }
+_enhanceError(error, method) {
+    console.error(`Upload Service Error in ${method}:`, {
+      message: error.message,
+      status: error.status,
+      code: error.code,
+      response: error.response,
+      data: error.data
+    });
+  
     const enhancedError = new Error(error.message || 'Upload service error');
     enhancedError.originalError = error;
     enhancedError.method = method;
     enhancedError.timestamp = new Date().toISOString();
     enhancedError.status = error.status;
     enhancedError.code = error.code;
-
+    
+    // Add response data if available
+    if (error.response) {
+      enhancedError.responseData = error.response.data;
+    }
+  
     return enhancedError;
   }
-
   /**
    * Format file size to human readable string
    * @param {number} bytes - File size in bytes

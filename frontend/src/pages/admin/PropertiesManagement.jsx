@@ -151,19 +151,58 @@ const PropertiesManagement = () => {
   const handleImageUpload = async (event) => {
     const files = Array.from(event.target.files);
     if (!files.length) return;
-
+  
     setUploading(true);
     setUploadProgress(0);
-
+    setError(''); // Clear previous errors
+  
     try {
-      // Upload files
-      const response = await uploadService.uploadMultipleFiles(files, 'property');
+      // Validate files first
+      const validation = uploadService.processFiles(files, {
+        maxSize: 5 * 1024 * 1024, // 5MB
+        allowedTypes: ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
+      });
+  
+      if (!validation.canUpload) {
+        throw new Error(`Invalid files: ${validation.errors.join(', ')}`);
+      }
+  
+      // Upload files with progress tracking
+      const onProgress = (progress) => {
+        setUploadProgress(progress);
+      };
+  
+      const response = await uploadService.uploadMultipleFiles(
+        validation.validFiles, 
+        'property', 
+        '', 
+        [], 
+        onProgress
+      );
       
-      const newImages = response.data.map(upload => ({
-        id: upload._id,
-        url: upload.url,
-        name: upload.originalName,
-        cloudinaryId: upload.cloudinaryId
+      // FIX: Handle different response structures safely
+      let uploadedFiles = [];
+      
+      if (Array.isArray(response.data)) {
+        uploadedFiles = response.data;
+      } else if (response.data && Array.isArray(response.data.files)) {
+        uploadedFiles = response.data.files;
+      } else if (Array.isArray(response)) {
+        uploadedFiles = response;
+      } else {
+        console.warn('Unexpected upload response format:', response);
+        throw new Error('Received invalid response from upload service');
+      }
+  
+      if (!uploadedFiles || uploadedFiles.length === 0) {
+        throw new Error('No files were uploaded successfully');
+      }
+  
+      const newImages = uploadedFiles.map(upload => ({
+        id: upload._id || upload.id,
+        url: upload.url || upload.path || upload.secure_url,
+        name: upload.originalName || upload.name || 'Property Image',
+        cloudinaryId: upload.cloudinaryId || upload.public_id
       }));
       
       setUploadedImages(prev => [...prev, ...newImages]);
@@ -178,7 +217,8 @@ const PropertiesManagement = () => {
       
     } catch (error) {
       console.error('Upload failed:', error);
-      setError('Image upload failed. Please try again.');
+      setError(`Image upload failed: ${error.message}`);
+      setUploadProgress(0);
     } finally {
       setUploading(false);
     }
