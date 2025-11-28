@@ -154,49 +154,23 @@ const PropertiesManagement = () => {
   
     setUploading(true);
     setUploadProgress(0);
-    setError(''); // Clear previous errors
+    setError('');
   
     try {
-      // Validate files first
-      const validation = uploadService.processFiles(files, {
-        maxSize: 5 * 1024 * 1024, // 5MB
-        allowedTypes: ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
-      });
-  
-      if (!validation.canUpload) {
-        throw new Error(`Invalid files: ${validation.errors.join(', ')}`);
-      }
-  
-      // Upload files with progress tracking
-      const onProgress = (progress) => {
-        setUploadProgress(progress);
-      };
-  
-      const response = await uploadService.uploadMultipleFiles(
-        validation.validFiles, 
-        'property', 
-        '', 
-        [], 
-        onProgress
-      );
+      console.log('🔄 Starting image upload...');
       
-      // FIX: Handle different response structures safely
-      let uploadedFiles = [];
+      const response = await uploadService.uploadMultipleFiles(files, 'property');
       
-      if (Array.isArray(response.data)) {
-        uploadedFiles = response.data;
-      } else if (response.data && Array.isArray(response.data.files)) {
-        uploadedFiles = response.data.files;
-      } else if (Array.isArray(response)) {
-        uploadedFiles = response;
-      } else {
-        console.warn('Unexpected upload response format:', response);
-        throw new Error('Received invalid response from upload service');
+      console.log('📦 Upload service response:', response);
+      
+      // The uploaded files should be in response.data
+      const uploadedFiles = response.data;
+      
+      if (!uploadedFiles || !Array.isArray(uploadedFiles)) {
+        throw new Error('Upload service returned invalid data format');
       }
   
-      if (!uploadedFiles || uploadedFiles.length === 0) {
-        throw new Error('No files were uploaded successfully');
-      }
+      console.log('🖼️ Raw uploaded files:', uploadedFiles);
   
       const newImages = uploadedFiles.map(upload => ({
         id: upload._id || upload.id,
@@ -205,22 +179,23 @@ const PropertiesManagement = () => {
         cloudinaryId: upload.cloudinaryId || upload.public_id
       }));
       
+      console.log('✅ Processed images:', newImages);
+      
       setUploadedImages(prev => [...prev, ...newImages]);
       
-      // Auto-set featured image if none selected
       if (!featuredImageId && newImages.length > 0) {
         setFeaturedImageId(newImages[0].id);
       }
       
-      setUploadProgress(100);
-      setTimeout(() => setUploadProgress(0), 1000);
+      setSuccess(`Successfully uploaded ${newImages.length} images`);
+      setTimeout(() => setSuccess(''), 3000);
       
     } catch (error) {
-      console.error('Upload failed:', error);
+      console.error('❌ Upload failed:', error);
       setError(`Image upload failed: ${error.message}`);
-      setUploadProgress(0);
     } finally {
       setUploading(false);
+      setUploadProgress(0);
     }
   };
 

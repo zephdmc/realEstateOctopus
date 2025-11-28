@@ -38,69 +38,39 @@ class UploadService {
    * @returns {Promise} Upload response
    */
  // frontend/src/services/uploadService.js
-
  async uploadMultipleFiles(files, category = 'property', description = '', tags = [], onProgress = null) {
     try {
       if (!files || !Array.isArray(files) || files.length === 0) {
         throw new Error('No files provided for upload');
       }
   
-      console.log(`📤 Uploading ${files.length} files`, { 
-        category, 
-        fileNames: files.map(f => f.name),
-        totalSize: this._formatFileSize(files.reduce((acc, file) => acc + file.size, 0))
-      });
+      console.log('🚀 Starting upload with files:', files.map(f => ({ name: f.name, size: f.size, type: f.type })));
   
       const response = await uploadAPI.uploadMultipleFiles(files, category, description, tags, onProgress);
       
-      // FIX: Handle Axios response structure
-      console.log('📦 Full upload response:', response);
-      
-      let uploadedFiles = [];
-      
-      // Check for different possible response structures
-      if (response && response.data) {
-        // Case 1: response.data.data (nested data array)
-        if (response.data.data && Array.isArray(response.data.data)) {
-          uploadedFiles = response.data.data;
-        }
-        // Case 2: response.data is directly the array
-        else if (Array.isArray(response.data)) {
-          uploadedFiles = response.data;
-        }
-        // Case 3: response.data has a files property
-        else if (response.data.files && Array.isArray(response.data.files)) {
-          uploadedFiles = response.data.files;
-        }
-        else {
-          console.warn('Unexpected response format:', response);
-          throw new Error(`Invalid response format from upload API. Expected array, got: ${typeof response.data}`);
-        }
-      } else {
-        // Case 4: Response is the array directly (unlikely with Axios)
-        uploadedFiles = response;
+      console.log('🔍 Raw API response:', response);
+      console.log('🔍 response.data:', response?.data);
+      console.log('🔍 response.data.data:', response?.data?.data);
+      console.log('🔍 Is response.data.data array?:', Array.isArray(response?.data?.data));
+  
+      // DIRECT FIX: Get files from response.data.data
+      const uploadedFiles = response?.data?.data;
+  
+      if (!uploadedFiles || !Array.isArray(uploadedFiles)) {
+        console.error('❌ Expected response.data.data to be an array but got:', uploadedFiles);
+        throw new Error('Upload service: Invalid response format - expected array of files in response.data.data');
       }
   
-      if (!Array.isArray(uploadedFiles)) {
-        console.warn('Uploaded files is not an array:', uploadedFiles);
-        throw new Error('Upload response did not contain a valid files array');
-      }
-  
-      console.log('✅ Multiple files upload successful:', {
-        count: uploadedFiles.length,
-        files: uploadedFiles.map(f => f.originalName || f.name || 'Unknown')
-      });
+      console.log('✅ Upload successful. Files:', uploadedFiles);
       
-      // Return consistent structure
       return {
         data: uploadedFiles,
         success: true,
-        count: uploadedFiles.length,
-        message: `Successfully uploaded ${uploadedFiles.length} files`
+        count: uploadedFiles.length
       };
       
     } catch (error) {
-      console.error('❌ Multiple files upload failed:', error);
+      console.error('❌ Upload failed:', error);
       throw this._enhanceError(error, 'uploadMultipleFiles');
     }
   }
