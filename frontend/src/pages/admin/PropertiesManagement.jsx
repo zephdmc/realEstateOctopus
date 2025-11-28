@@ -85,6 +85,7 @@ const PropertiesManagement = () => {
 
   // Fetch properties from API - FIXED DATA EXTRACTION
   // Fetch properties from API - ULTRA ROBUST VERSION
+// Fetch properties from API - CORRECTED VERSION
 const fetchProperties = useCallback(async () => {
   try {
     setLoading(true);
@@ -97,12 +98,24 @@ const fetchProperties = useCallback(async () => {
     
     let propertiesData = [];
     
-    // Handle API response structure
-    if (response && response.success && Array.isArray(response.data)) {
-      propertiesData = response.data;
-    } else if (Array.isArray(response)) {
+    // Handle the actual API response structure
+    // The response has: {data: {success: true, count: 4, data: Array(4)}, status: 200, ...}
+    if (response && response.data && response.data.success && Array.isArray(response.data.data)) {
+      // Response structure: response.data.data contains the array
+      propertiesData = response.data.data;
+      console.log('✅ Extracted properties from response.data.data:', propertiesData);
+    } 
+    // Also handle direct array response for backward compatibility
+    else if (Array.isArray(response)) {
       propertiesData = response;
-    } else {
+      console.log('✅ Extracted properties from direct array:', propertiesData);
+    } 
+    // Handle other possible structures
+    else if (response && response.success && Array.isArray(response.data)) {
+      propertiesData = response.data;
+      console.log('✅ Extracted properties from response.data:', propertiesData);
+    }
+    else {
       console.warn('⚠️ Unexpected response structure:', response);
       propertiesData = [];
     }
@@ -114,7 +127,7 @@ const fetchProperties = useCallback(async () => {
 
     console.log(`📊 Found ${propertiesData.length} raw properties:`, propertiesData);
 
-    // ULTRA ROBUST normalization
+    // Normalize property data structure
     const normalizedProperties = propertiesData.map((property, index) => {
       console.log(`🔧 Processing property ${index}:`, property);
       
