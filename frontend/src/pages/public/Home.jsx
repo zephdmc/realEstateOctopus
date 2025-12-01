@@ -49,8 +49,9 @@ const Home = () => {
           className="absolute inset-0 bg-cover bg-center bg-no-repeat bg-fixed"
           style={{
             backgroundImage: `linear-gradient(
-              rgba(37, 99, 235, 0.85),
-              rgba(29, 78, 216, 0.90)
+              to bottom,
+              rgba(16, 10, 30, 0.4),    
+              rgba(0, 0, 0, 0.3)          
             ), url('https://images.unsplash.com/photo-1613490493576-7fde63acd811?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2071&q=80')`
           }}
         >
@@ -66,13 +67,15 @@ const Home = () => {
           <div className="text-center space-y-4 md:space-y-8 relative z-10">
             <div className="space-y-6">
               {/* Main Heading with Enhanced Styling */}
-              <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold leading-tight">
+              <h1 className="text-4xl text-red-500  md:text-6xl  lg:text-7xl font-bold leading-tight">
                 Find Your 
-                <span className="block text-blue-200 bg-gradient-to-r from-blue-200 to-white bg-clip-text text-transparent">
-                  Dream Home
-                </span>
+                <span className="block bg-gradient-to-r from-gray-50 to-gray-100 bg-clip-text text-transparent
+                 [text-shadow:_0_1px_0_rgba(255,255,255,0.4),_0_-1px_0_rgba(0,0,0,0.2)]
+                 drop-shadow-lg">
+  Dream Home
+</span>
               </h1>
-              <p className="text-xl md:text-2xl text-blue-100 max-w-3xl mx-auto leading-relaxed font-light">
+              <p className="text-xl md:text-2xl text-gray-50 max-w-3xl mx-auto leading-relaxed font-light bg-white/10 backdrop-blur-md rounded-2xl p-1 border border-white/20 shadow-2xl">
                 Discover exclusive properties with premium amenities. Expert agents ready to guide you home.
               </p>
             </div>
@@ -109,12 +112,12 @@ const Home = () => {
         </div>
         
         <WideContainer>
-          <div className="text-center mb-2 md:mb-8 relative z-10">
+          {/* <div className="text-center mb-2 md:mb-8 relative z-10">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900">
               Featured Properties
             </h2>
            
-          </div>
+          </div> */}
           <FeaturedProperties 
             title=""
             subtitle=""

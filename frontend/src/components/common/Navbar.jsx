@@ -114,8 +114,8 @@ const Navbar = () => {
                     href={contact.href}
                     className="inline-flex items-center space-x-2 mx-4 text-gray-600 hover:text-blue-600 transition duration-200 flex-shrink-0 group"
                   >
-                    <div className="bg-blue-100 p-1 rounded group-hover:bg-blue-200 transition duration-200">
-                      <div className="text-blue-600">
+                    <div className="bg-red-100 p-1 rounded group-hover:bg-blue-200 transition duration-200">
+                      <div className="text-red-600">
                         {contact.icon}
                       </div>
                     </div>
@@ -221,7 +221,7 @@ const Navbar = () => {
                       className="flex items-center space-x-3 px-4 py-2 text-gray-700 hover:text-blue-600 transition duration-200 group"
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
-                      <div className="bg-blue-100 p-2 rounded-lg group-hover:bg-blue-200 transition duration-200">
+                      <div className="bg-red-100 p-2 rounded-lg group-hover:bg-red-200 transition duration-200">
                         <div className="text-blue-600">
                           {contact.icon}
                         </div>
@@ -233,7 +233,7 @@ const Navbar = () => {
               </div>
 
               <Link
-                to="/list-property"
+                to="/contact"
                 className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-all duration-200 font-medium text-center mt-4 flex items-center justify-center space-x-2 shadow-lg"
                 onClick={() => setIsMobileMenuOpen(false)}
               >

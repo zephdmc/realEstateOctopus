@@ -127,10 +127,10 @@ const NewsletterForm = ({
   return (
     <div className={`rounded-2xl p-6 ${variantClasses[variant]} ${className}`}>
       <div className={`mb-4 ${textClasses[variant]}`}>
-        <h3 className={`font-bold mb-2 ${size === 'large' ? 'text-2xl' : 'text-xl'}`}>
+        <h3 className={`font-bold mb-2 text-red-500 ${size === 'large' ? 'text-2xl' : 'text-xl'}`}>
           Stay Updated
         </h3>
-        <p className={`opacity-90 ${sizeClasses[size]}`}>
+        <p className={`text-gray-50 opacity-90 ${sizeClasses[size]}`}>
           Get the latest property listings, market insights, and real estate news delivered to your inbox.
         </p>
       </div>
@@ -234,7 +234,7 @@ const NewsletterForm = ({
           )}
         </button>
 
-        <p className={`text-xs opacity-75 text-center ${textClasses[variant]}`}>
+        <p className={`text-xs opacity-75 text-gray-50 text-center ${textClasses[variant]}`}>
           By subscribing, you agree to our Privacy Policy and consent to receive 
           updates from our company.
         </p>

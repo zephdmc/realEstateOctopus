@@ -445,7 +445,7 @@ const PropertyCard = ({ property, className = "" }) => {
         </div>
 
         {/* Alternative compact layout for very small screens */}
-        <div className="flex items-center justify-between border-t border-gray-200 pt-4 mt-4 sm:hidden">
+        {/* <div className="flex items-center justify-between border-t border-gray-200 pt-4 mt-4 sm:hidden">
           <div className="flex items-center space-x-1 text-gray-600">
             <FaBed className="w-3 h-3" />
             <span className="text-xs">{displayBedrooms} Bed</span>
@@ -458,7 +458,7 @@ const PropertyCard = ({ property, className = "" }) => {
             <FaRulerCombined className="w-3 h-3" />
             <span className="text-xs">{displayArea} {areaUnit}</span>
           </div>
-        </div>
+        </div> */}
 
         {/* Footer */}
         <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-200">

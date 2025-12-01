@@ -66,10 +66,10 @@ const FeaturedProperties = ({
   }
 
   return (
-    <section className={`py-2 md:py-16 bg-gray-50 ${className}`}>
+    <section className={`py-2 md:py-2 bg-gray-50 ${className}`}>
       <WideContainer>
         {/* Header */}
-        <div className="text-center mb-12">
+        <div className="text-center mb-2">
           <h2 className="text-4xl font-bold text-gray-900 mb-4">{title}</h2>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">{subtitle}</p>
         </div>
