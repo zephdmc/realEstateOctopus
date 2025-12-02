@@ -30,7 +30,7 @@ const Header = ({ onSearch, user, onLogin, onLogout }) => {
             </div>
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Octopus Real Estate </h1>
-              <p className="text-xs text-gray-600">Ventures LTD</p>
+              <p className="text-xs text-red-600">Ventures LTD</p>
             </div>
           </div>
 
@@ -42,7 +42,7 @@ const Header = ({ onSearch, user, onLogin, onLogout }) => {
               </div>
               <div>
                 <span className="text-gray-700 font-medium">+ (234)913 2080059</span>
-                <p className="text-xs text-gray-500">Call us today</p>
+                <p className="text-xs text-red-500">Call us today</p>
               </div>
             </div>
             <div className="flex items-center space-x-2">
@@ -51,7 +51,7 @@ const Header = ({ onSearch, user, onLogin, onLogout }) => {
               </div>
               <div>
                 <span className="text-gray-700 font-medium">info@Octopusrealestate.com</span>
-                <p className="text-xs text-gray-500">Email us</p>
+                <p className="text-xs text-red-500">Email us</p>
               </div>
             </div>
           </div>
@@ -117,7 +117,7 @@ const Header = ({ onSearch, user, onLogin, onLogout }) => {
 
               {/* Optional: Phone Call Button */}
               <button
-                onClick={() => window.open('tel:+2349132080059', '_self')}
+                onClick={() => window.open('tel:+258843966599', '_self')}
                 className="hidden md:flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 group"
                 title="Call us now"
               >

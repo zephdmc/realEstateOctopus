@@ -42,24 +42,24 @@ const AdminLayout = ({
       icon: '📝',
       current: location.pathname.startsWith('/admin/blog')
     },
-    {
-      name: 'Media Library',
-      href: '/admin/media',
-      icon: '🖼️',
-      current: location.pathname.startsWith('/admin/media')
-    },
-    {
-      name: 'Users',
-      href: '/admin/users',
-      icon: '👥',
-      current: location.pathname.startsWith('/admin/users')
-    },
-    {
-      name: 'Settings',
-      href: '/admin/settings',
-      icon: '⚙️',
-      current: location.pathname.startsWith('/admin/settings')
-    }
+    // {
+    //   name: 'Media Library',
+    //   href: '/admin/media',
+    //   icon: '🖼️',
+    //   current: location.pathname.startsWith('/admin/media')
+    // },
+    // {
+    //   name: 'Users',
+    //   href: '/admin/users',
+    //   icon: '👥',
+    //   current: location.pathname.startsWith('/admin/users')
+    // },
+    // {
+    //   name: 'Settings',
+    //   href: '/admin/settings',
+    //   icon: '⚙️',
+    //   current: location.pathname.startsWith('/admin/settings')
+    // }
   ];
 
   // Quick stats for dashboard
@@ -130,7 +130,7 @@ const AdminLayout = ({
                   </div>
                   <div>
                     <h1 className="text-lg font-semibold text-gray-900">Admin Panel</h1>
-                    <p className="text-sm text-gray-500">EstatePro</p>
+                    <p className="text-sm text-gray-500">Octopus Real Estate Manager </p>
                   </div>
                 </div>
               </div>
@@ -263,7 +263,7 @@ const AdminLayout = ({
           <main className="flex-1 relative z-0 overflow-y-auto focus:outline-none">
             <div className="py-6">
               {/* Quick Stats - Only show on dashboard */}
-              {location.pathname === '/admin/dashboard' && (
+              {/* {location.pathname === '/admin/dashboard' && (
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-8">
                   <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
                     {quickStats.map((item) => (
@@ -294,7 +294,7 @@ const AdminLayout = ({
                     ))}
                   </div>
                 </div>
-              )}
+              )} */}
 
               {/* Main Content */}
               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

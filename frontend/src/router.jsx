@@ -10,7 +10,6 @@ import BlogPost from './pages/public/BlogPost';
 import Contact from './pages/public/Contact';
 import About from './pages/public/About';
 import Services from './pages/public/Services';
-
 // Admin Pages
 import Dashboard from './pages/admin/Dashboard';
 import PropertiesManagement from './pages/admin/PropertiesManagement';

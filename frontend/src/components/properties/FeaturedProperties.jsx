@@ -91,7 +91,7 @@ const FeaturedProperties = ({
 
         {/* CTA Section */}
         {!loading && properties && properties.length > 0 && (
-          <div className="text-center mt-12">
+          <div className="text-center mt-12 rounded-2xl  border-2 border-red-600">
             <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-2xl shadow-xl p-12 text-white">
               <h3 className="text-3xl font-bold mb-4">
                 Ready to Find Your Dream Property?

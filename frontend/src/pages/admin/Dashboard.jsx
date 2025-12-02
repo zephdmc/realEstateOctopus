@@ -214,7 +214,7 @@ const Dashboard = () => {
         <p className="text-gray-600">Welcome back! Here's what's happening with your real estate business today.</p>
       </div>
 
-      {/* Stats Grid */}
+      Stats Grid
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7 gap-4 mb-8">
         <StatCard 
           title="Total Properties" 

@@ -3,7 +3,7 @@ import { HashRouter as Router } from 'react-router-dom';
 import AppRouter from './router';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
-
+// import GlobalSearch from './components/common/GlobalSearch';
 // Import global styles
 import './styles/globals.css';
 import './styles/components.css';

@@ -4,6 +4,7 @@ import MainLayout from '../../components/layout/MainLayout';
 import { HeroContainer, WideContainer } from '../../components/layout/PageContainer';
 import SearchForm from '../../components/forms/SearchForm';
 import FeaturedProperties from '../../components/properties/FeaturedProperties';
+import FeaturedBlogPosts from '../../components/blog/FeaturedBlog'
 import { 
   FaHome, 
   FaMoneyBillWave, 
@@ -67,14 +68,15 @@ const Home = () => {
           <div className="text-center space-y-4 md:space-y-8 relative z-10">
             <div className="space-y-6">
               {/* Main Heading with Enhanced Styling */}
-              <h1 className="text-4xl text-red-500  md:text-6xl  lg:text-7xl font-bold leading-tight">
-                Find Your 
-                <span className="block bg-gradient-to-r from-gray-50 to-gray-100 bg-clip-text text-transparent
-                 [text-shadow:_0_1px_0_rgba(255,255,255,0.4),_0_-1px_0_rgba(0,0,0,0.2)]
-                 drop-shadow-lg">
-  Dream Home
-</span>
-              </h1>
+              <h1 className="text-4xl text-gray-50 md:text-6xl lg:text-7xl font-bold leading-tight">
+  Find Your 
+  <span className="block bg-gradient-to-r from-gray-50 to-gray-100 bg-clip-text text-transparent
+                   [text-shadow:_0_1px_0_rgba(255,255,255,0.4),_0_-1px_0_rgba(0,0,0,0.2)]
+                   drop-shadow-lg border-b-2 border-red-500 pb-1">
+    Dream Home
+  </span>
+</h1>
+             
               <p className="text-xl md:text-2xl text-gray-50 max-w-3xl mx-auto leading-relaxed font-light bg-white/10 backdrop-blur-md rounded-2xl p-1 border border-white/20 shadow-2xl">
                 Discover exclusive properties with premium amenities. Expert agents ready to guide you home.
               </p>
@@ -133,8 +135,8 @@ const Home = () => {
         <div className="absolute bottom-0 left-0 w-48 h-48 bg-blue-100 rounded-full translate-y-24 -translate-x-24"></div>
 
         <WideContainer>
-          <div className="text-center mb-16 relative z-10">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+          <div className="text-center mb-16  border-b-2 border-red-600 pb-4 relative z-10">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900  mb-4">
               Our Services
             </h2>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
@@ -142,7 +144,7 @@ const Home = () => {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 relative z-10">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4  gap-8 relative z-10">
             {services.map((service, index) => (
               <div 
                 key={index} 
@@ -152,7 +154,7 @@ const Home = () => {
                 <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-white rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                 
                 <div className="relative z-10">
-                  <div className="inline-flex items-center justify-center p-4 rounded-2xl bg-blue-600 text-white mb-6 group-hover:bg-blue-700 group-hover:scale-110 transition-all duration-300 shadow-lg">
+                  <div className="inline-flex items-center border-b-2 border-red-600 justify-center p-4 rounded-2xl bg-blue-600 text-white mb-6 group-hover:bg-blue-700 group-hover:scale-110 transition-all duration-300 shadow-lg">
                     {service.icon}
                   </div>
                   <h3 className="text-xl font-semibold text-gray-900 mb-4 group-hover:text-blue-800 transition-colors duration-300">
@@ -167,9 +169,31 @@ const Home = () => {
           </div>
         </WideContainer>
       </section>
+       {/* Featured Properties Section */}
+       <section className="py-2 py-16 bg-gradient-to-br from-blue-50 via-white to-blue-50 relative overflow-hidden">
+        {/* Background Pattern */}
+        <div className="absolute inset-0 opacity-5">
+          <div className="absolute top-0 left-0 w-32 h-32 bg-blue-200 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-0 right-0 w-40 h-40 bg-blue-300 rounded-full blur-3xl"></div>
+        </div>
+        
+        <WideContainer>
+          {/* <div className="text-center mb-2 md:mb-8 relative z-10">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900">
+              Featured Properties
+            </h2>
+           
+          </div> */}
+          <FeaturedBlogPosts 
+            title=""
+            subtitle=""
+            limit={6}
+          />
+        </WideContainer>
+      </section>
 
       {/* CTA Section */}
-      <section className="relative py-16 md:py-20 bg-gradient-to-br from-blue-600 to-blue-700 text-white overflow-hidden">
+      <section className="relative py-16 md:py-20 bg-gradient-to-br from-blue-600  border-t-2 border-red-600 to-blue-700 text-white overflow-hidden">
         {/* Enhanced Background Elements */}
         <div className="absolute inset-0">
           <div className="absolute top-0 left-0 w-40 h-40 bg-blue-500/20 rounded-full blur-3xl animate-pulse"></div>
@@ -182,7 +206,7 @@ const Home = () => {
         <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_1px_1px,_white_1px,_transparent_0)] bg-[length:20px_20px]"></div>
 
         <WideContainer>
-        <section className="relative py-16 md:py-20 bg-gradient-to-br from-blue-600 to-blue-700 text-white overflow-hidden">
+        <section className="relative py-16 md:py-20 bg-gradient-to-br from-blue-600 to-blue-700  border-t-2 border-red-600 text-white overflow-hidden">
   {/* Luxury Background Image with Overlay */}
   <div 
     className="absolute inset-0 bg-cover bg-center bg-no-repeat"
@@ -217,7 +241,7 @@ const Home = () => {
       <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
         <Link
           to="/properties"
-          className="bg-white text-blue-600 px-8 py-4 rounded-xl hover:bg-blue-50 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl hover:scale-105 min-w-[200px] text-center"
+          className="bg-white text-blue-600 px-8 py-4 rounded-xl hover:bg-blue-50  border-b-2 border-red-600 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl hover:scale-105 min-w-[200px] text-center"
         >
           Browse Properties
         </Link>

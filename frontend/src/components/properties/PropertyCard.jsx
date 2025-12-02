@@ -323,7 +323,7 @@ const PropertyCard = ({ property, className = "" }) => {
   };
 
   return (
-    <div className={`bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 border border-gray-100 ${className}`}>
+    <div className={`bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 border-y-2 border-red-600 ${className}`}>
       {/* Image Section */}
       <div className="relative overflow-hidden">
         <Link to={`/properties/${id}`}>

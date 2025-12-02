@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useApi } from './useApi';
 
-export const useBlogPosts = (filters = {}, autoFetch = true) => { // ADD autoFetch parameter
+export const useBlogPosts = (filters = {}, autoFetch = true) => {
   const [posts, setPosts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [pagination, setPagination] = useState({
     currentPage: 1,
@@ -13,57 +13,102 @@ export const useBlogPosts = (filters = {}, autoFetch = true) => { // ADD autoFet
   });
 
   const { get, post, put, del } = useApi();
+  const requestInProgressRef = useRef(false);
+  const lastRequestTimeRef = useRef(0);
 
-  // Fetch blog posts with filters - FIXED URL
-  const fetchPosts = useCallback(async (filters = {}) => {
+  // Simple debounce function
+  const debounceRequest = (callback, delay = 1000) => {
+    return (...args) => {
+      const now = Date.now();
+      if (now - lastRequestTimeRef.current < delay) {
+        console.log('⏳ Skipping request - too soon after last request');
+        return Promise.reject('Request skipped: Rate limited');
+      }
+      lastRequestTimeRef.current = now;
+      return callback(...args);
+    };
+  };
+
+  // Fetch blog posts - SIMPLIFIED
+  const fetchPosts = useCallback(async (customFilters = {}) => {
+    // Prevent multiple simultaneous requests
+    if (requestInProgressRef.current) {
+      console.log('⏳ Request already in progress, skipping');
+      return;
+    }
+
     try {
+      requestInProgressRef.current = true;
       setLoading(true);
       setError(null);
-
+      
+      const mergedFilters = { ...filters, ...customFilters };
       const queryParams = new URLSearchParams();
       
       // Add filter parameters
-      Object.entries(filters).forEach(([key, value]) => {
+      Object.entries(mergedFilters).forEach(([key, value]) => {
         if (value !== undefined && value !== null && value !== '') {
           queryParams.append(key, value.toString());
         }
       });
-
-      // FIXED: Use correct endpoint - remove "/posts"
+      
+      // Add cache-busting parameter with random value
+      queryParams.append('_t', Date.now() + Math.random());
+      
+      console.log('📡 Fetching blog posts with filters:', mergedFilters);
+      
       const response = await get(`/blog?${queryParams.toString()}`);
       
+      console.log('📥 API Response:', response);
+      
       if (response.success) {
-        console.log('📥 Received posts response:', response.data);
-        
-        // FIXED: Handle different response structures
         const postsData = response.data.data || response.data.posts || response.data || [];
+        console.log('✅ Received posts:', postsData.length);
+        
         setPosts(postsData);
         
-        // FIXED: Handle different pagination structures
         setPagination({
           currentPage: response.data.pagination?.page || response.data.currentPage || 1,
           totalPages: response.data.pagination?.pages || response.data.totalPages || 1,
           totalItems: response.data.pagination?.total || response.data.total || response.data.totalItems || 0,
           itemsPerPage: response.data.pagination?.limit || response.data.itemsPerPage || 9
         });
+        
+        return postsData;
       } else {
         throw new Error(response.message || 'Failed to fetch blog posts');
       }
     } catch (err) {
-      setError(err.message || 'An error occurred while fetching blog posts');
-      console.error('Error fetching blog posts:', err);
+      console.error('❌ Error fetching blog posts:', err);
+      
+      // Only show error if it's not a rate limit skip
+      if (err.message !== 'Request skipped: Rate limited') {
+        // Check if it's a rate limit error
+        if (err.response?.status === 429) {
+          setError('Too many requests. Please wait a moment before trying again.');
+        } else {
+          setError(err.message || 'Failed to load blog posts. Please try again.');
+        }
+      }
+      
+      throw err;
     } finally {
       setLoading(false);
+      requestInProgressRef.current = false;
     }
-  }, [get]);
+  }, [get, filters]);
 
-  // Fetch single post by ID or slug - FIXED URL
+  // Fetch single post
   const fetchPost = useCallback(async (identifier) => {
+    if (!identifier) {
+      setError('No post identifier provided');
+      return null;
+    }
+    
     try {
       setLoading(true);
       setError(null);
-
-      // FIXED: Use correct endpoint - remove "/posts"
+      
       const response = await get(`/blog/${identifier}`);
       
       if (response.success) {
@@ -72,15 +117,15 @@ export const useBlogPosts = (filters = {}, autoFetch = true) => { // ADD autoFet
         throw new Error(response.message || 'Failed to fetch blog post');
       }
     } catch (err) {
-      setError(err.message || 'An error occurred while fetching the blog post');
       console.error('Error fetching blog post:', err);
+      setError(err.message || 'Failed to load blog post');
       return null;
     } finally {
       setLoading(false);
     }
   }, [get]);
 
-  // Create new blog post - THIS IS CORRECT
+  // Create new blog post
   const createPost = useCallback(async (postData) => {
     try {
       setLoading(true);
@@ -89,7 +134,6 @@ export const useBlogPosts = (filters = {}, autoFetch = true) => { // ADD autoFet
       const response = await post('/blog', postData);
       
       if (response.success) {
-        // Add the new post to the list
         const newPost = response.data.data || response.data;
         setPosts(prev => [newPost, ...prev]);
         return newPost;
@@ -97,7 +141,7 @@ export const useBlogPosts = (filters = {}, autoFetch = true) => { // ADD autoFet
         throw new Error(response.message || 'Failed to create blog post');
       }
     } catch (err) {
-      setError(err.message || 'An error occurred while creating the blog post');
+      setError(err.message || 'Failed to create blog post');
       console.error('Error creating blog post:', err);
       throw err;
     } finally {
@@ -105,76 +149,49 @@ export const useBlogPosts = (filters = {}, autoFetch = true) => { // ADD autoFet
     }
   }, [post]);
 
-  // Update blog post - FIXED ID FIELD
-const updatePost = useCallback(async (postId, updates) => {
-  try {
-    setLoading(true);
-    setError(null);
+  // Update blog post
+  const updatePost = useCallback(async (postId, updates) => {
+    try {
+      setLoading(true);
+      setError(null);
 
-    console.log('🔄 updatePost called:', { postId, updates });
-
-    // FIXED: Use correct endpoint
-    const response = await put(`/blog/${postId}`, updates);
-    
-    console.log('📨 Full API Response:', response);
-    console.log('📊 Response success:', response.success);
-    console.log('📦 Response data:', response.data);
-    
-    if (response.success) {
-      const updatedPost = response.data.data || response.data;
+      const response = await put(`/blog/${postId}`, updates);
       
-      console.log('✅ Post updated successfully:', updatedPost);
-      console.log('🔍 Checking title match:', {
-        sentTitle: updates.title,
-        returnedTitle: updatedPost.title,
-        match: updates.title === updatedPost.title
-      });
-      
-      // FIXED: Use _id instead of id for MongoDB
-      setPosts(prev => 
-        prev.map(post => {
-          console.log('🔍 Comparing IDs:', { 
-            postId, 
-            post_id: post._id, 
-            match: post._id === postId 
-          });
-          return post._id === postId ? updatedPost : post;
-        })
-      );
-      return updatedPost;
-    } else {
-      console.log('❌ API returned success: false');
-      throw new Error(response.message || 'Failed to update blog post');
+      if (response.success) {
+        const updatedPost = response.data.data || response.data;
+        
+        setPosts(prev => 
+          prev.map(post => post._id === postId ? updatedPost : post)
+        );
+        return updatedPost;
+      } else {
+        throw new Error(response.message || 'Failed to update blog post');
+      }
+    } catch (err) {
+      setError(err.message || 'Failed to update blog post');
+      console.error('Error updating blog post:', err);
+      throw err;
+    } finally {
+      setLoading(false);
     }
-  } catch (err) {
-    setError(err.message || 'An error occurred while updating the blog post');
-    console.error('Error updating blog post:', err);
-    throw err;
-  } finally {
-    setLoading(false);
-  }
-}, [put]);
+  }, [put]);
 
-  // Delete blog post - FIXED ID FIELD
+  // Delete blog post
   const deletePost = useCallback(async (postId) => {
     try {
       setLoading(true);
       setError(null);
 
-      console.log('🗑️ Deleting post:', postId);
-
-      // FIXED: Use correct endpoint
       const response = await del(`/blog/${postId}`);
       
       if (response.success) {
-        // FIXED: Use _id instead of id for MongoDB
         setPosts(prev => prev.filter(post => post._id !== postId));
         return true;
       } else {
         throw new Error(response.message || 'Failed to delete blog post');
       }
     } catch (err) {
-      setError(err.message || 'An error occurred while deleting the blog post');
+      setError(err.message || 'Failed to delete blog post');
       console.error('Error deleting blog post:', err);
       throw err;
     } finally {
@@ -182,19 +199,16 @@ const updatePost = useCallback(async (postId, updates) => {
     }
   }, [del]);
 
-  // Update post status (publish, draft, etc.) - FIXED
+  // Update post status
   const updateStatus = useCallback(async (postId, status) => {
     try {
-      console.log('🔄 updateStatus called:', { postId, status });
-      
       if (!postId) {
         throw new Error('Post ID is required for status update');
       }
-
       const response = await updatePost(postId, { status });
       return response;
     } catch (err) {
-      setError(err.message || 'An error occurred while updating post status');
+      setError(err.message || 'Failed to update post status');
       console.error('Error in updateStatus:', err);
       throw err;
     }
@@ -206,27 +220,25 @@ const updatePost = useCallback(async (postId, updates) => {
       const response = await updatePost(postId, { featured });
       return response;
     } catch (err) {
-      setError(err.message || 'An error occurred while updating featured status');
+      setError(err.message || 'Failed to update featured status');
       throw err;
     }
   }, [updatePost]);
 
-  // Search blog posts - FIXED URL
+  // Search blog posts
   const searchPosts = useCallback(async (searchTerm, searchFilters = {}) => {
     try {
       setLoading(true);
       setError(null);
-
-      // Use the main fetch with search filter instead of separate endpoint
       await fetchPosts({ ...searchFilters, search: searchTerm });
     } catch (err) {
-      setError(err.message || 'An error occurred while searching blog posts');
+      setError(err.message || 'Failed to search blog posts');
       console.error('Error searching blog posts:', err);
       throw err;
     }
   }, [fetchPosts]);
 
-  // Get posts by category - FIXED URL
+  // Get posts by category
   const getPostsByCategory = useCallback(async (categorySlug, limit = 10) => {
     try {
       const response = await get(`/blog?category=${categorySlug}&limit=${limit}`);
@@ -238,11 +250,11 @@ const updatePost = useCallback(async (postId, updates) => {
       }
     } catch (err) {
       console.error('Error fetching posts by category:', err);
-      return [];
+      throw err;
     }
   }, [get]);
 
-  // Get posts by tag - FIXED URL
+  // Get posts by tag
   const getPostsByTag = useCallback(async (tagSlug, limit = 10) => {
     try {
       const response = await get(`/blog?tag=${tagSlug}&limit=${limit}`);
@@ -254,47 +266,44 @@ const updatePost = useCallback(async (postId, updates) => {
       }
     } catch (err) {
       console.error('Error fetching posts by tag:', err);
-      return [];
+      throw err;
     }
   }, [get]);
 
-  // Remove unimplemented functions or comment them out
-  const getFeaturedPosts = useCallback(async () => {
-    console.warn('getFeaturedPosts not implemented in backend');
-    return [];
-  }, []);
+  // Get featured posts
+  const getFeaturedPosts = useCallback(async (limit = 6) => {
+    await fetchPosts({ 
+      featured: true, 
+      limit: limit,
+      status: 'published' 
+    });
+  }, [fetchPosts]);
 
-  const getRecentPosts = useCallback(async () => {
-    console.warn('getRecentPosts not implemented in backend');
-    return [];
-  }, []);
-
-  const getRelatedPosts = useCallback(async () => {
-    console.warn('getRelatedPosts not implemented in backend');
-    return [];
-  }, []);
-
-  const getCategories = useCallback(async () => {
-    console.warn('getCategories not implemented in backend');
-    return [];
-  }, []);
-
-  const getTags = useCallback(async () => {
-    console.warn('getTags not implemented in backend');
-    return [];
-  }, []);
+  // Get recent posts
+  const getRecentPosts = useCallback(async (limit = 5) => {
+    await fetchPosts({ 
+      limit: limit,
+      sort: '-createdAt',
+      status: 'published' 
+    });
+  }, [fetchPosts]);
 
   // Refetch posts with current filters
   const refetch = useCallback(() => {
-    fetchPosts(filters);
+    return fetchPosts(filters);
   }, [fetchPosts, filters]);
 
-  // Initial fetch and when filters change - ADD autoFetch check
+  // Initial fetch - only once
   useEffect(() => {
-    if (autoFetch) {
-      fetchPosts(filters);
+    if (autoFetch && !requestInProgressRef.current) {
+      // Use setTimeout to avoid race conditions
+      const timer = setTimeout(() => {
+        fetchPosts(filters);
+      }, 100);
+      
+      return () => clearTimeout(timer);
     }
-  }, [fetchPosts, filters, autoFetch]); // ADD autoFetch dependency
+  }, [autoFetch]); // Remove filters dependency to prevent re-fetching
 
   return {
     // State
@@ -312,10 +321,13 @@ const updatePost = useCallback(async (postId, updates) => {
     updateStatus,
     refetch,
     updatePost,
+    
     // Optional Actions
     searchPosts,
     getPostsByCategory,
     getPostsByTag,
+    getFeaturedPosts,
+    getRecentPosts,
     
     // Pagination helpers
     currentPage: pagination.currentPage,
@@ -329,7 +341,7 @@ const updatePost = useCallback(async (postId, updates) => {
   };
 };
 
-// Hook for single blog post - FIXED URL
+// Hook for single blog post
 export const useBlogPost = (identifier) => {
   const [post, setPost] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -338,40 +350,38 @@ export const useBlogPost = (identifier) => {
   const { get } = useApi();
 
   const fetchPost = useCallback(async (id) => {
+    if (!id) {
+      setError('No post identifier provided');
+      setLoading(false);
+      return null;
+    }
+
     try {
       setLoading(true);
       setError(null);
       
-      console.log('🔍 useBlogPost - Fetching post:', id);
-
-      // FIXED: Use correct endpoint
       const response = await get(`/blog/${id}`);
-      
-      console.log('📄 useBlogPost - API Response:', response);
       
       if (response.success) {
         const postData = response.data.data || response.data;
-        console.log('✅ useBlogPost - Post data received:', postData);
         setPost(postData);
+        return postData;
       } else {
-        console.log('❌ useBlogPost - API returned error:', response.message);
         throw new Error(response.message || 'Failed to fetch blog post');
       }
     } catch (err) {
-      console.error('💥 useBlogPost - Error:', err);
-      setError(err.message || 'An error occurred while fetching the blog post');
+      console.error('Error fetching blog post:', err);
+      setError(err.message || 'Failed to load blog post');
+      return null;
     } finally {
       setLoading(false);
-      console.log('🏁 useBlogPost - Loading complete');
     }
   }, [get]);
 
   useEffect(() => {
-    console.log('🚀 useBlogPost - useEffect triggered with identifier:', identifier);
     if (identifier) {
       fetchPost(identifier);
     } else {
-      console.log('⚠️ useBlogPost - No identifier provided');
       setLoading(false);
     }
   }, [identifier, fetchPost]);

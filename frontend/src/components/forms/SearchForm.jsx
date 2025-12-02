@@ -127,7 +127,7 @@ const NewsletterForm = ({
   return (
     <div className={`rounded-2xl p-6 ${variantClasses[variant]} ${className}`}>
       <div className={`mb-4 ${textClasses[variant]}`}>
-        <h3 className={`font-bold mb-2 text-red-500 ${size === 'large' ? 'text-2xl' : 'text-xl'}`}>
+        <h3 className={`font-bold mb-2 text-gray-50 ${size === 'large' ? 'text-2xl' : 'text-xl'}`}>
           Stay Updated
         </h3>
         <p className={`text-gray-50 opacity-90 ${sizeClasses[size]}`}>
@@ -168,7 +168,7 @@ const NewsletterForm = ({
         )}
 
         <div>
-          <label htmlFor="email" className={`block font-medium mb-2 ${textClasses[variant]}`}>
+          <label htmlFor="email" className={`block text-red-600 font-medium mb-2 ${textClasses[variant]}`}>
             Email Address *
           </label>
           <input
@@ -220,7 +220,7 @@ const NewsletterForm = ({
         <button
           type="submit"
           disabled={isSubmitting}
-          className={`w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition duration-200 font-semibold flex items-center justify-center space-x-2 ${
+          className={`w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition  border-b-2 border-red-600 duration-200 font-semibold flex items-center justify-center space-x-2 ${
             size === 'large' ? 'text-lg' : ''
           }`}
         >

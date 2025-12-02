@@ -66,7 +66,7 @@ const Navbar = () => {
   }, []);
 
   return (
-    <nav className="bg-white sticky top-0 z-40 shadow-sm border-b border-gray-200">
+    <nav className="bg-white sticky top-0 z-40 shadow-sm border-b border-red-200">
       <div className="container mx-auto px-4">
         <div className="flex justify-between items-center py-3">
           {/* Desktop Navigation */}
@@ -77,8 +77,8 @@ const Navbar = () => {
                 to={item.href}
                 className={`px-3 py-2 text-sm font-medium transition-all duration-200 ${
                   item.current
-                    ? 'text-blue-600 border-b-2 border-blue-600 font-semibold'
-                    : 'text-gray-700 hover:text-blue-600 hover:border-b-2 hover:border-blue-300'
+                    ? 'text-blue-600 border-b-2 border-red-600 font-semibold'
+                    : 'text-gray-700 hover:text-blue-600 hover:border-b-2 hover:border-red-300'
                 }`}
                 onClick={() => setIsMobileMenuOpen(false)}
               >
@@ -114,8 +114,8 @@ const Navbar = () => {
                     href={contact.href}
                     className="inline-flex items-center space-x-2 mx-4 text-gray-600 hover:text-blue-600 transition duration-200 flex-shrink-0 group"
                   >
-                    <div className="bg-red-100 p-1 rounded group-hover:bg-blue-200 transition duration-200">
-                      <div className="text-red-600">
+                    <div className="bg-blue-100 p-1 rounded group-hover:bg-blue-200 transition duration-200">
+                      <div className="text-blue-600">
                         {contact.icon}
                       </div>
                     </div>
@@ -221,7 +221,7 @@ const Navbar = () => {
                       className="flex items-center space-x-3 px-4 py-2 text-gray-700 hover:text-blue-600 transition duration-200 group"
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
-                      <div className="bg-red-100 p-2 rounded-lg group-hover:bg-red-200 transition duration-200">
+                      <div className="bg-blue-100 p-2 rounded-lg group-hover:bg-blue-200 transition duration-200">
                         <div className="text-blue-600">
                           {contact.icon}
                         </div>
