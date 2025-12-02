@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Header from '../common/Header';
 import Footer from '../common/Footer';
 // import Sidebar from './Sidebar';
@@ -11,17 +11,70 @@ const MainLayout = ({
   containerWidth = 'default',
   className = '' 
 }) => {
-  const { 
-    user, 
-    loginWithEmail, 
-    signInWithGoogle, 
-    logout,
-    isAuthenticated 
-  } = useAuth();
+  // Add comprehensive debugging for auth context
+  console.log('=== MainLayout Mounting ===');
+  
+  try {
+    const authContext = useAuth();
+    console.log('Auth Context received:', {
+      user: authContext?.user,
+      loginWithEmail: authContext?.loginWithEmail,
+      signInWithGoogle: authContext?.signInWithGoogle,
+      logout: authContext?.logout,
+      isAuthenticated: authContext?.isAuthenticated
+    });
+    
+    // Destructure with safe defaults
+    const { 
+      user, 
+      loginWithEmail: authLoginWithEmail, 
+      signInWithGoogle: authSignInWithGoogle, 
+      logout: authLogout,
+      isAuthenticated 
+    } = authContext || {};
+    
+    // Create safe wrapper functions with fallbacks
+    const loginWithEmail = typeof authLoginWithEmail === 'function' 
+      ? authLoginWithEmail 
+      : async (email, password) => {
+          console.error('loginWithEmail is not a function, using fallback');
+          return { 
+            success: false, 
+            error: 'Authentication system not available' 
+          };
+        };
+    
+    const signInWithGoogle = typeof authSignInWithGoogle === 'function'
+      ? authSignInWithGoogle
+      : async () => {
+          console.error('signInWithGoogle is not a function, using fallback');
+          return { 
+            success: false, 
+            error: 'Google authentication not available' 
+          };
+        };
+    
+    const logout = typeof authLogout === 'function'
+      ? authLogout
+      : async () => {
+          console.error('logout is not a function, using fallback');
+        };
+    
+  } catch (authError) {
+    console.error('Error accessing auth context:', authError);
+    // Fallback context if auth fails
+    const user = null;
+    const isAuthenticated = false;
+    const loginWithEmail = async () => ({ success: false, error: 'Auth context error' });
+    const signInWithGoogle = async () => ({ success: false, error: 'Auth context error' });
+    const logout = async () => {};
+  }
   
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [loginForm, setLoginForm] = useState({ email: '', password: '' });
+  const [loginError, setLoginError] = useState('');
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   const containerClasses = {
     default: 'max-w-7xl',
@@ -37,57 +90,111 @@ const MainLayout = ({
 
   // Handle login button click - show modal/form
   const handleLoginClick = () => {
+    console.log('handleLoginClick called');
     setShowLoginModal(true);
+    setLoginError('');
   };
 
   // Handle actual login with email/password
   const handleEmailLogin = async (e) => {
     e.preventDefault();
+    console.log('handleEmailLogin called');
+    
+    // Validate form
+    if (!loginForm.email || !loginForm.password) {
+      setLoginError('Please enter both email and password');
+      return;
+    }
+    
+    setIsLoggingIn(true);
+    setLoginError('');
+    
     try {
+      console.log('Attempting login with:', loginForm.email);
       const result = await loginWithEmail(loginForm.email, loginForm.password);
-      if (result.success) {
+      console.log('Login result:', result);
+      
+      if (result?.success) {
         console.log('Login successful:', result.user);
         setShowLoginModal(false);
         setLoginForm({ email: '', password: '' });
+        setLoginError('');
       } else {
-        console.error('Login failed:', result.error);
-        alert(`Login failed: ${result.error.message || result.error}`);
+        const errorMessage = result?.error?.message || result?.error || 'Login failed. Please try again.';
+        console.error('Login failed:', errorMessage);
+        setLoginError(errorMessage);
       }
     } catch (error) {
-      console.error('Login error:', error);
-      alert('Login error occurred');
+      console.error('Login error caught:', error);
+      setLoginError(error.message || 'An unexpected error occurred');
+    } finally {
+      setIsLoggingIn(false);
     }
   };
 
   // Handle Google login
   const handleGoogleLogin = async () => {
+    console.log('handleGoogleLogin called');
+    
+    setIsLoggingIn(true);
+    setLoginError('');
+    
     try {
+      console.log('Attempting Google login');
       const result = await signInWithGoogle();
-      if (result.success) {
+      console.log('Google login result:', result);
+      
+      if (result?.success) {
         console.log('Google login successful:', result.user);
         setShowLoginModal(false);
       } else {
-        console.error('Google login failed:', result.error);
-        alert(`Google login failed: ${result.error.message || result.error}`);
+        const errorMessage = result?.error?.message || result?.error || 'Google login failed. Please try again.';
+        console.error('Google login failed:', errorMessage);
+        setLoginError(errorMessage);
       }
     } catch (error) {
-      console.error('Google login error:', error);
-      alert('Google login error occurred');
+      console.error('Google login error caught:', error);
+      setLoginError(error.message || 'An unexpected error occurred with Google login');
+    } finally {
+      setIsLoggingIn(false);
     }
   };
 
   // Handle logout
   const handleLogout = async () => {
+    console.log('handleLogout called');
+    
     try {
       await logout();
       console.log('Logout successful');
+      // Optionally show a success message
     } catch (error) {
       console.error('Logout error:', error);
+      // Don't alert the user about logout errors as they might not care
     }
   };
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
+  };
+
+  // Close modal on escape key
+  useEffect(() => {
+    const handleEscapeKey = (e) => {
+      if (e.key === 'Escape' && showLoginModal) {
+        setShowLoginModal(false);
+      }
+    };
+    
+    document.addEventListener('keydown', handleEscapeKey);
+    return () => document.removeEventListener('keydown', handleEscapeKey);
+  }, [showLoginModal]);
+
+  // Close modal when clicking outside
+  const handleModalBackdropClick = (e) => {
+    if (e.target === e.currentTarget) {
+      setShowLoginModal(false);
+    }
   };
 
   return (
@@ -97,17 +204,42 @@ const MainLayout = ({
         <Header 
           onSearch={handleSearch}
           user={user}
-          onLogin={handleLoginClick} // Just opens modal
+          onLogin={handleLoginClick}
           onLogout={handleLogout}
           onMenuToggle={toggleSidebar}
+          isAuthenticated={isAuthenticated}
         />
       )}
 
       {/* Login Modal */}
       {showLoginModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-96">
-            <h2 className="text-xl font-bold mb-4">Login to EstatePro</h2>
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={handleModalBackdropClick}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="login-modal-title"
+        >
+          <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-xl">
+            <div className="flex justify-between items-center mb-6">
+              <h2 id="login-modal-title" className="text-2xl font-bold text-gray-800">
+                Login to EstatePro
+              </h2>
+              <button
+                onClick={() => setShowLoginModal(false)}
+                className="text-gray-400 hover:text-gray-600 text-2xl"
+                aria-label="Close login modal"
+              >
+                &times;
+              </button>
+            </div>
+            
+            {/* Error Message */}
+            {loginError && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-md">
+                {loginError}
+              </div>
+            )}
             
             {/* Email/Password Form */}
             <form onSubmit={handleEmailLogin} className="space-y-4">
@@ -119,9 +251,10 @@ const MainLayout = ({
                   type="email"
                   value={loginForm.email}
                   onChange={(e) => setLoginForm(prev => ({ ...prev, email: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   placeholder="Enter your email"
                   required
+                  disabled={isLoggingIn}
                 />
               </div>
               
@@ -133,31 +266,42 @@ const MainLayout = ({
                   type="password"
                   value={loginForm.password}
                   onChange={(e) => setLoginForm(prev => ({ ...prev, password: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   placeholder="Enter your password"
                   required
+                  disabled={isLoggingIn}
                 />
               </div>
               
               <button
                 type="submit"
-                className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition duration-200"
+                disabled={isLoggingIn}
+                className={`w-full py-3 rounded-md font-medium transition duration-200 ${
+                  isLoggingIn 
+                    ? 'bg-blue-400 cursor-not-allowed' 
+                    : 'bg-blue-600 hover:bg-blue-700'
+                } text-white`}
               >
-                Login
+                {isLoggingIn ? 'Logging in...' : 'Login'}
               </button>
             </form>
 
             {/* Divider */}
-            <div className="my-4 flex items-center">
+            <div className="my-6 flex items-center">
               <div className="flex-1 border-t border-gray-300"></div>
-              <span className="px-3 text-gray-500 text-sm">OR</span>
+              <span className="px-4 text-gray-500 text-sm">OR</span>
               <div className="flex-1 border-t border-gray-300"></div>
             </div>
 
             {/* Google Login */}
             <button
               onClick={handleGoogleLogin}
-              className="w-full flex items-center justify-center gap-2 border border-gray-300 py-2 rounded-md hover:bg-gray-50 transition duration-200"
+              disabled={isLoggingIn}
+              className={`w-full flex items-center justify-center gap-3 border border-gray-300 py-3 rounded-md font-medium transition duration-200 ${
+                isLoggingIn 
+                  ? 'bg-gray-100 cursor-not-allowed' 
+                  : 'hover:bg-gray-50 hover:border-gray-400'
+              }`}
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -168,13 +312,22 @@ const MainLayout = ({
               Continue with Google
             </button>
 
-            {/* Close Button */}
-            <button
-              onClick={() => setShowLoginModal(false)}
-              className="w-full mt-4 text-gray-500 hover:text-gray-700"
-            >
-              Cancel
-            </button>
+            {/* Sign Up Link */}
+            <div className="mt-6 text-center">
+              <p className="text-gray-600">
+                Don't have an account?{' '}
+                <button
+                  className="text-blue-600 hover:text-blue-800 font-medium"
+                  onClick={() => {
+                    setShowLoginModal(false);
+                    // You can navigate to signup page here
+                    console.log('Navigate to signup');
+                  }}
+                >
+                  Sign up
+                </button>
+              </p>
+            </div>
           </div>
         </div>
       )}
@@ -184,7 +337,7 @@ const MainLayout = ({
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
         user={user}
-        onLogin={handleLogin}
+        onLogin={handleLoginClick}
         onLogout={handleLogout}
       /> */}
 
