@@ -2,6 +2,7 @@ import React from 'react';
 import BlogCard from './BlogCard';
 import LoadingSpinner from '../common/LoadingSpinner';
 import Pagination from '../common/Pagination';
+import { Link } from 'react-router-dom';
 
 const BlogGrid = ({ 
   posts, 
@@ -54,12 +55,12 @@ const BlogGrid = ({
           </svg>
           <h3 className="text-xl font-semibold text-gray-900 mb-2">No Posts Found</h3>
           <p className="text-gray-600 mb-4">{emptyMessage}</p>
-          <a
-            href="/blog"
+          <Link
+            to="/blog"
             className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition duration-200"
           >
             View All Posts
-          </a>
+          </Link>
         </div>
       </div>
     );

@@ -1,6 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useProperties } from '../../hooks/useProperties';
+import PropertyCard from '../properties/PropertyCard';
 
-const SearchBar = ({ onSearch, onOpenResults, placeholder = "Search properties...", className = "" }) => {
+const SearchBar = ({ placeholder = "Search properties..." }) => {
+  // Search state
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState({
     type: '',
@@ -8,8 +11,20 @@ const SearchBar = ({ onSearch, onOpenResults, placeholder = "Search properties..
     bedrooms: '',
     location: ''
   });
+  
+  // UI state
   const [showSearchPanel, setShowSearchPanel] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [showResults, setShowResults] = useState(false);
+  const [isSearching, setIsSearching] = useState(false); // For search button loading
+  const [apiFilters, setApiFilters] = useState({});
+  const [hasSearched, setHasSearched] = useState(false);
+  const [searchError, setSearchError] = useState(null);
+  
+  // Use ref for debouncing
+  const searchTimeoutRef = useRef(null);
+  
+  // Use properties hook for fetching data
+  const { properties, loading, error, pagination } = useProperties(apiFilters);
 
   const propertyTypes = [
     'Any Type',
@@ -38,14 +53,193 @@ const SearchBar = ({ onSearch, onOpenResults, placeholder = "Search properties..
     '5+'
   ];
 
-  // Auto-detect and sync filters from search term
-  useEffect(() => {
-    if (searchTerm.trim()) {
-      const term = searchTerm.toLowerCase().trim();
+  // Parse search term to extract filters
+  const parseSearchTerm = (term) => {
+    if (!term) return {};
+    
+    const termLower = term.toLowerCase().trim();
+    const parsed = {};
+    
+    console.log('🔍 Parsing search term:', termLower);
+    
+    // Extract bedrooms
+    const bedroomMatch = termLower.match(/(\d+)\s*(?:bed(?:room)?s?|br|bd|beds?)/) || termLower.match(/^(\d+)$/);
+    if (bedroomMatch) {
+      const beds = parseInt(bedroomMatch[1]);
+      if (beds >= 1 && beds <= 4) {
+        parsed.bedrooms = beds;
+      } else if (beds >= 5) {
+        parsed.bedrooms = '5+';
+      }
+    }
+    
+    // Extract property type
+    const typeKeywords = {
+      'house': 'House',
+      'apartment': 'Apartment',
+      'condo': 'Condo',
+      'villa': 'Villa',
+      'commercial': 'Commercial'
+    };
+    
+    for (const [keyword, typeValue] of Object.entries(typeKeywords)) {
+      if (termLower.includes(keyword)) {
+        parsed.type = typeValue;
+        break;
+      }
+    }
+    
+    // Extract price
+    const priceMatch = termLower.match(/(under|below|less than|up to|over|above|more than)?\s*\$?\s*(\d+(?:,\d+)*(?:\.\d+)?)\s*(k|m|million)?/);
+    if (priceMatch) {
+      const [, modifier, amountStr, unit] = priceMatch;
+      let amount = parseFloat(amountStr.replace(/,/g, ''));
+      
+      if (unit === 'k' || termLower.includes('thousand')) amount *= 1000;
+      if (unit === 'm' || termLower.includes('million')) amount *= 1000000;
+      
+      if (modifier) {
+        const modLower = modifier.toLowerCase();
+        if (modLower.includes('under') || modLower.includes('below') || modLower.includes('less')) {
+          parsed.maxPrice = amount;
+        } else if (modLower.includes('over') || modLower.includes('above') || modLower.includes('more')) {
+          parsed.minPrice = amount;
+        }
+      } else {
+        parsed.minPrice = amount * 0.8;
+        parsed.maxPrice = amount * 1.2;
+      }
+    }
+    
+    // If search term looks like a location (no other filters detected)
+    if (Object.keys(parsed).length === 0 && termLower.length > 0) {
+      const words = termLower.split(/\s+/);
+      if (words.length <= 3 && !/^\d+$/.test(termLower)) {
+        parsed.location = term; // Use original term for proper casing
+      } else {
+        parsed.search = term; // General search
+      }
+    }
+    
+    console.log('✅ Parsed filters:', parsed);
+    return parsed;
+  };
+
+  // Convert UI filters to API filters
+  const convertToApiFilters = (searchTerm, uiFilters) => {
+    const apiFilters = {
+      page: 1,
+      limit: 12
+    };
+
+    // Parse search term first
+    const termFilters = parseSearchTerm(searchTerm);
+    
+    console.log('📊 Term filters:', termFilters);
+    console.log('🎯 UI filters:', uiFilters);
+    
+    // Merge term filters
+    Object.assign(apiFilters, termFilters);
+    
+    // Apply explicit UI filters (override term filters when there's a conflict)
+    if (uiFilters.type && uiFilters.type !== 'Any Type') {
+      apiFilters.type = uiFilters.type;
+    }
+    
+    if (uiFilters.priceRange && uiFilters.priceRange !== 'Any Price') {
+      const priceMap = {
+        'Under $100,000': { minPrice: 0, maxPrice: 100000 },
+        '$100,000 - $200,000': { minPrice: 100000, maxPrice: 200000 },
+        '$200,000 - $300,000': { minPrice: 200000, maxPrice: 300000 },
+        '$300,000 - $500,000': { minPrice: 300000, maxPrice: 500000 },
+        'Over $500,000': { minPrice: 500000, maxPrice: 10000000 }
+      };
+      
+      const range = priceMap[uiFilters.priceRange];
+      if (range) {
+        apiFilters.minPrice = range.minPrice;
+        apiFilters.maxPrice = range.maxPrice;
+      }
+    }
+    
+    if (uiFilters.bedrooms && uiFilters.bedrooms !== 'Any') {
+      apiFilters.bedrooms = uiFilters.bedrooms === '5+' ? '5+' : parseInt(uiFilters.bedrooms);
+    }
+    
+    if (uiFilters.location) {
+      apiFilters.location = uiFilters.location;
+    }
+    
+    // Clean up empty values
+    Object.keys(apiFilters).forEach(key => {
+      if (apiFilters[key] === '' || apiFilters[key] === null || apiFilters[key] === undefined) {
+        delete apiFilters[key];
+      }
+    });
+    
+    // Log conflicts
+    if (termFilters.type && uiFilters.type && uiFilters.type !== 'Any Type' && termFilters.type !== uiFilters.type) {
+      console.warn(`⚠️ Type conflict: Search term suggests "${termFilters.type}" but dropdown selected "${uiFilters.type}"`);
+      console.warn('Using dropdown selection:', uiFilters.type);
+    }
+    
+    console.log('🚀 Final API Filters:', apiFilters);
+    return apiFilters;
+  };
+
+  // Handle search button click
+  const handleSearch = async (e) => {
+    if (e) e.preventDefault();
+    
+    // Clear any previous error
+    setSearchError(null);
+    setIsSearching(true);
+    
+    try {
+      // Convert to API filters
+      const apiFilters = convertToApiFilters(searchTerm, filters);
+      
+      // Set filters to trigger API call
+      setApiFilters(apiFilters);
+      setHasSearched(true);
+      
+      // Close search panel, show results
+      setShowSearchPanel(false);
+      setShowResults(true);
+      
+    } catch (err) {
+      console.error('❌ Search error:', err);
+      setSearchError('Failed to perform search. Please try again.');
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  // Handle filter changes
+  const handleFilterChange = (filterType, value) => {
+    const newFilters = {
+      ...filters,
+      [filterType]: value
+    };
+    setFilters(newFilters);
+  };
+
+  // Handle search term changes with debouncing
+  const handleSearchTermChange = (value) => {
+    setSearchTerm(value);
+    
+    // Clear previous timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    
+    // Auto-detect filters from search term
+    if (value.trim()) {
+      const term = value.toLowerCase().trim();
       let updatedFilters = { ...filters };
       let changed = false;
-
-      // Detect property type from search term
+      
+      // Auto-detect property type
       const propertyKeywords = {
         'house': 'House',
         'apartment': 'Apartment',
@@ -53,7 +247,7 @@ const SearchBar = ({ onSearch, onOpenResults, placeholder = "Search properties..
         'villa': 'Villa',
         'commercial': 'Commercial'
       };
-
+      
       for (const [keyword, type] of Object.entries(propertyKeywords)) {
         if (term.includes(keyword) && filters.type !== type) {
           updatedFilters.type = type;
@@ -61,8 +255,8 @@ const SearchBar = ({ onSearch, onOpenResults, placeholder = "Search properties..
           break;
         }
       }
-
-      // Detect bedrooms from search term
+      
+      // Auto-detect bedrooms
       const bedroomMatch = term.match(/(\d+)\s*(?:bed|bedroom|br|bd)/);
       if (bedroomMatch) {
         const bedNum = bedroomMatch[1];
@@ -72,128 +266,14 @@ const SearchBar = ({ onSearch, onOpenResults, placeholder = "Search properties..
           changed = true;
         }
       }
-
-      // Detect price from search term
-      const priceMatch = term.match(/\$?\s*(\d+(?:,\d+)*(?:\.\d+)?)\s*(k|m|million)?/);
-      if (priceMatch && !filters.priceRange) {
-        const [, amountStr, unit] = priceMatch;
-        let amount = parseFloat(amountStr.replace(/,/g, ''));
-        
-        if (unit === 'k' || term.includes('thousand')) amount *= 1000;
-        if (unit === 'm' || term.includes('million')) amount *= 1000000;
-
-        // Find matching price range
-        let matchedRange = '';
-        if (amount < 100000) matchedRange = 'Under $100,000';
-        else if (amount <= 200000) matchedRange = '$100,000 - $200,000';
-        else if (amount <= 300000) matchedRange = '$200,000 - $300,000';
-        else if (amount <= 500000) matchedRange = '$300,000 - $500,000';
-        else matchedRange = 'Over $500,000';
-
-        if (matchedRange && filters.priceRange !== matchedRange) {
-          updatedFilters.priceRange = matchedRange;
-          changed = true;
-        }
-      }
-
+      
       if (changed) {
         setFilters(updatedFilters);
       }
     }
-  }, [searchTerm]);
-
-  const handleSearch = async (e) => {
-    if (e) e.preventDefault();
-    
-    setIsLoading(true);
-    
-    // Process search term and handle conflicts intelligently
-    let finalFilters = { ...filters };
-    
-    if (searchTerm.trim()) {
-      const term = searchTerm.toLowerCase().trim();
-      
-      // If search term contains property type, use it (override dropdown if different)
-      const propertyKeywords = {
-        'house': 'House',
-        'apartment': 'Apartment',
-        'condo': 'Condo',
-        'villa': 'Villa',
-        'commercial': 'Commercial'
-      };
-      
-      for (const [keyword, type] of Object.entries(propertyKeywords)) {
-        if (term.includes(keyword)) {
-          finalFilters.type = type; // Override dropdown with search term
-          break;
-        }
-      }
-      
-      // If search term contains bedroom info, use it
-      const bedroomMatch = term.match(/(\d+)\s*(?:bed|bedroom|br|bd)/);
-      if (bedroomMatch) {
-        const bedNum = bedroomMatch[1];
-        const bedOption = bedrooms.find(b => b === bedNum || (bedNum >= 5 && b === '5+'));
-        if (bedOption && bedOption !== 'Any') {
-          finalFilters.bedrooms = bedOption;
-        }
-      }
-    }
-    
-    // Create search criteria
-    const searchCriteria = {
-      term: searchTerm,
-      ...finalFilters
-    };
-    
-    console.log('🔍 Final search criteria:', searchCriteria);
-    
-    // Call the parent's search handler
-    await onSearch(searchCriteria);
-    
-    // Close search panel
-    setShowSearchPanel(false);
-    
-    // Notify parent to open results (if provided)
-    if (onOpenResults) {
-      onOpenResults();
-    }
-    
-    setIsLoading(false);
   };
 
-  const handleFilterChange = (filterType, value) => {
-    const newFilters = {
-      ...filters,
-      [filterType]: value
-    };
-    setFilters(newFilters);
-    
-    // Only trigger search if we're in the search panel
-    // or if there's actually a value to search with
-    if (searchTerm || Object.values(newFilters).some(v => v)) {
-      onSearch({
-        term: searchTerm,
-        ...newFilters
-      });
-    }
-  };
-
-  const handleSearchTermChange = (value) => {
-    setSearchTerm(value);
-    
-    // Auto-search as user types (debounced)
-    clearTimeout(window.searchTimeout);
-    window.searchTimeout = setTimeout(() => {
-      if (value.trim() || Object.values(filters).some(v => v)) {
-        onSearch({
-          term: value,
-          ...filters
-        });
-      }
-    }, 300);
-  };
-
+  // Clear all filters
   const clearFilters = () => {
     setSearchTerm('');
     setFilters({
@@ -202,64 +282,88 @@ const SearchBar = ({ onSearch, onOpenResults, placeholder = "Search properties..
       bedrooms: '',
       location: ''
     });
-    onSearch({});
+    setApiFilters({});
+    setHasSearched(false);
+    setShowSearchPanel(false);
+    setShowResults(false);
+    setSearchError(null);
+  };
+
+  // Open search panel
+  const openSearchPanel = () => {
+    setShowSearchPanel(true);
+    setShowResults(false);
+  };
+
+  // Open results panel
+  const openResultsPanel = () => {
+    if (hasSearched) {
+      setShowResults(true);
+      setShowSearchPanel(false);
+    } else {
+      openSearchPanel();
+    }
+  };
+
+  // Close results panel
+  const closeResultsPanel = () => {
+    setShowResults(false);
+  };
+
+  // Close search panel
+  const closeSearchPanel = () => {
     setShowSearchPanel(false);
   };
 
-  // Check for conflicts between search term and dropdowns
-  const hasTypeConflict = () => {
-    if (!searchTerm.trim()) return false;
-    
-    const term = searchTerm.toLowerCase();
-    const dropdownType = filters.type.toLowerCase();
-    
-    const conflicts = {
-      'house': ['apartment', 'condo', 'villa', 'commercial'],
-      'apartment': ['house', 'villa', 'commercial'],
-      'condo': ['house', 'villa', 'commercial'],
-      'villa': ['house', 'apartment', 'condo', 'commercial'],
-      'commercial': ['house', 'apartment', 'condo', 'villa']
-    };
-    
-    if (dropdownType && dropdownType !== 'any type') {
-      for (const [type, conflictingTypes] of Object.entries(conflicts)) {
-        if (dropdownType.includes(type)) {
-          return conflictingTypes.some(conflict => term.includes(conflict));
-        }
-      }
-    }
-    
-    return false;
+  // Get active filters for display
+  const getActiveFilters = () => {
+    const active = [];
+    if (filters.type && filters.type !== 'Any Type') active.push(`Type: ${filters.type}`);
+    if (filters.bedrooms && filters.bedrooms !== 'Any') active.push(`${filters.bedrooms} Bedroom${filters.bedrooms === '1' ? '' : 's'}`);
+    if (filters.priceRange && filters.priceRange !== 'Any Price') active.push(filters.priceRange);
+    if (filters.location) active.push(`Location: ${filters.location}`);
+    return active;
   };
 
-  // Floating Search Button for all screen sizes
-  const renderFloatingSearchButton = () => (
+  // Floating Search Button
+  const renderFloatingButton = () => (
     <button
-      onClick={() => setShowSearchPanel(true)}
+      onClick={openResultsPanel}
       className={`fixed bg-blue-600 text-white p-4 rounded-full shadow-lg border-b-2 border-red-600 hover:bg-blue-700 transition-all duration-200 z-40 ${
-        showSearchPanel ? 'opacity-0 pointer-events-none' : 'opacity-100'
+        (showSearchPanel || showResults) ? 'opacity-0 pointer-events-none' : 'opacity-100'
       }`}
       style={{ 
         boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
         bottom: '1.5rem',
         right: '1.5rem'
       }}
-      aria-label="Open search panel"
+      aria-label={hasSearched ? "Show search results" : "Open search panel"}
+      title={hasSearched ? "Click to view search results" : "Click to search properties"}
     >
       <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
       </svg>
+      
+      {/* Notification dot when results are available */}
+      {hasSearched && !showResults && (
+        <div className="absolute -top-1 -right-1">
+          <div className="relative">
+            <div className="animate-ping absolute inline-flex h-3 w-3 rounded-full bg-red-400 opacity-75"></div>
+            <div className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></div>
+          </div>
+        </div>
+      )}
     </button>
   );
 
-  // Search Panel Overlay for all screen sizes
+  // Search Panel
   const renderSearchPanel = () => (
     showSearchPanel && (
       <div className="fixed inset-0 z-50">
         {/* Backdrop */}
         <div 
           className="absolute inset-0 bg-black bg-opacity-50"
-          onClick={() => setShowSearchPanel(false)}
+          onClick={closeSearchPanel}
         />
         
         {/* Search Panel */}
@@ -269,7 +373,7 @@ const SearchBar = ({ onSearch, onOpenResults, placeholder = "Search properties..
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold text-gray-900">Search Properties</h3>
               <button
-                onClick={() => setShowSearchPanel(false)}
+                onClick={closeSearchPanel}
                 className="p-2 text-gray-400 hover:text-gray-600 transition duration-200"
               >
                 <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -277,25 +381,18 @@ const SearchBar = ({ onSearch, onOpenResults, placeholder = "Search properties..
                 </svg>
               </button>
             </div>
-            
-            {/* Conflict Warning */}
-            {hasTypeConflict() && (
-              <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded">
-                <div className="flex items-center text-amber-700">
-                  <svg className="w-4 h-4 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                  </svg>
-                  <span className="text-sm">
-                    Search term will override dropdown selection
-                  </span>
-                </div>
-              </div>
-            )}
           </div>
 
-          {/* Search Content */}
+          {/* Search Form */}
           <div className="p-6 space-y-4">
-            {/* Main Search Input */}
+            {/* Show search error if any */}
+            {searchError && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-red-600 text-sm">{searchError}</p>
+              </div>
+            )}
+            
+            {/* Search Input */}
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -324,14 +421,7 @@ const SearchBar = ({ onSearch, onOpenResults, placeholder = "Search properties..
 
             {/* Property Type */}
             <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="block text-sm font-medium text-gray-700">Property Type</label>
-                {searchTerm && filters.type && hasTypeConflict() && (
-                  <span className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded">
-                    Will use search term
-                  </span>
-                )}
-              </div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Property Type</label>
               <select
                 value={filters.type}
                 onChange={(e) => handleFilterChange('type', e.target.value)}
@@ -363,14 +453,7 @@ const SearchBar = ({ onSearch, onOpenResults, placeholder = "Search properties..
 
             {/* Bedrooms */}
             <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="block text-sm font-medium text-gray-700">Bedrooms</label>
-                {searchTerm && filters.bedrooms && searchTerm.match(/(\d+)\s*(?:bed|bedroom|br|bd)/) && (
-                  <span className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded">
-                    Will use search term
-                  </span>
-                )}
-              </div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Bedrooms</label>
               <select
                 value={filters.bedrooms}
                 onChange={(e) => handleFilterChange('bedrooms', e.target.value)}
@@ -396,36 +479,21 @@ const SearchBar = ({ onSearch, onOpenResults, placeholder = "Search properties..
               />
             </div>
 
-            {/* Current Filters Summary */}
-            {(searchTerm || Object.values(filters).some(v => v)) && (
-              <div className="bg-gray-50 p-3 rounded-lg">
-                <p className="text-sm font-medium text-gray-700 mb-2">Current search:</p>
+            {/* Show what will be searched */}
+            {(searchTerm || Object.values(filters).some(v => v && v !== 'Any Type' && v !== 'Any Price' && v !== 'Any')) && (
+              <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
+                <p className="text-sm font-medium text-blue-900 mb-2">Searching for:</p>
                 <div className="flex flex-wrap gap-2">
                   {searchTerm && (
                     <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                       "{searchTerm}"
                     </span>
                   )}
-                  {filters.type && (
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                      Type: {filters.type}
+                  {getActiveFilters().map((filter, index) => (
+                    <span key={index} className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                      {filter}
                     </span>
-                  )}
-                  {filters.bedrooms && (
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                      {filters.bedrooms} Bedroom{filters.bedrooms === '1' ? '' : 's'}
-                    </span>
-                  )}
-                  {filters.priceRange && (
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                      {filters.priceRange}
-                    </span>
-                  )}
-                  {filters.location && (
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                      Location: {filters.location}
-                    </span>
-                  )}
+                  ))}
                 </div>
               </div>
             )}
@@ -441,10 +509,10 @@ const SearchBar = ({ onSearch, onOpenResults, placeholder = "Search properties..
               </button>
               <button
                 onClick={handleSearch}
-                disabled={isLoading}
+                disabled={isSearching || (!searchTerm && !Object.values(filters).some(v => v && v !== 'Any Type' && v !== 'Any Price' && v !== 'Any'))}
                 className="flex-1 bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 transition duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
               >
-                {isLoading ? (
+                {isSearching ? (
                   <>
                     <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -463,13 +531,214 @@ const SearchBar = ({ onSearch, onOpenResults, placeholder = "Search properties..
     )
   );
 
+  // Results Panel
+  const renderResultsPanel = () => (
+    showResults && (
+      <div className="fixed inset-0 z-50">
+        {/* Backdrop */}
+        <div 
+          className="absolute inset-0 bg-black bg-opacity-50"
+          onClick={closeResultsPanel}
+        />
+        
+        {/* Results Panel */}
+        <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
+          {/* Header */}
+          <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 rounded-t-2xl">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Search Results
+                  {searchTerm && (
+                    <span className="text-gray-600 font-normal ml-2">
+                      for "{searchTerm}"
+                    </span>
+                  )}
+                </h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  {loading ? 'Searching...' : 
+                   properties.length > 0 ? 
+                   `Found ${properties.length} propert${properties.length === 1 ? 'y' : 'ies'}` : 
+                   'No properties found'}
+                </p>
+              </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={openSearchPanel}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-200 font-medium text-sm"
+                >
+                  New Search
+                </button>
+                <button
+                  onClick={closeResultsPanel}
+                  className="p-2 text-gray-400 hover:text-gray-600 transition duration-200"
+                >
+                  <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            
+            {/* Show active filters */}
+            {getActiveFilters().length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-3">
+                {getActiveFilters().map((filter, index) => (
+                  <span key={index} className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                    {filter}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Results Content */}
+          <div className="p-4 md:p-6">
+            {/* Loading State */}
+            {loading && (
+              <div className="flex flex-col items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+                <p className="text-gray-600">Searching properties...</p>
+              </div>
+            )}
+
+            {/* Error State */}
+            {(error || searchError) && !loading && (
+              <div className="text-center py-12">
+                <div className="text-red-500 mb-4">
+                  <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Error Loading Properties</h3>
+                <p className="text-gray-600 mb-4">{error || searchError}</p>
+                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                  <button
+                    onClick={() => setApiFilters({...apiFilters})}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-200"
+                  >
+                    Try Again
+                  </button>
+                  <button
+                    onClick={openSearchPanel}
+                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition duration-200"
+                  >
+                    New Search
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Empty State - IMPROVED */}
+            {!loading && !error && !searchError && properties.length === 0 && (
+              <div className="text-center py-12 px-4">
+                <div className="text-gray-400 mb-6">
+                  <svg className="w-20 h-20 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                
+                <h3 className="text-xl font-semibold text-gray-900 mb-3">
+                  No Properties Found
+                </h3>
+                
+                <div className="max-w-md mx-auto mb-6">
+                  {searchTerm && (
+                    <p className="text-gray-600 mb-4">
+                      No results found for <span className="font-medium text-gray-900">"{searchTerm}"</span>
+                    </p>
+                  )}
+                  
+                  <p className="text-gray-600 mb-6">
+                    Try adjusting your search criteria or clear some filters to see more properties.
+                  </p>
+                  
+                  {/* Search Tips */}
+                  <div className="bg-gray-50 rounded-lg p-4 text-left">
+                    <h4 className="font-medium text-gray-900 mb-3">Search Tips:</h4>
+                    <ul className="space-y-2 text-sm text-gray-600">
+                      <li className="flex items-start">
+                        <svg className="w-4 h-4 text-blue-500 mt-0.5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>Try broader search terms or check spelling</span>
+                      </li>
+                      <li className="flex items-start">
+                        <svg className="w-4 h-4 text-blue-500 mt-0.5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>Try different price ranges or property types</span>
+                      </li>
+                      <li className="flex items-start">
+                        <svg className="w-4 h-4 text-blue-500 mt-0.5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>Remove some filters to see more properties</span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+                
+                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                  <button
+                    onClick={openSearchPanel}
+                    className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-200 font-medium"
+                  >
+                    Try New Search
+                  </button>
+                  <button
+                    onClick={clearFilters}
+                    className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition duration-200 font-medium"
+                  >
+                    Clear All Filters
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Results Grid */}
+            {!loading && !error && !searchError && properties.length > 0 && (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+                  {properties.map((property) => (
+                    <PropertyCard
+                      key={property._id || property.id}
+                      property={property}
+                      className="transform transition-transform duration-200 hover:scale-[1.02]"
+                    />
+                  ))}
+                </div>
+                
+                {/* Show "Try different search" suggestion at the bottom */}
+                <div className="mt-8 text-center">
+                  <p className="text-gray-600 mb-3">
+                    Not finding what you're looking for?
+                  </p>
+                  <button
+                    onClick={openSearchPanel}
+                    className="px-6 py-2 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition duration-200 font-medium"
+                  >
+                    Try Different Search
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    )
+  );
+
   return (
     <>
-      {/* Floating Search Button - Always visible when panel is closed */}
-      {renderFloatingSearchButton()}
+      {/* Floating Button */}
+      {renderFloatingButton()}
       
-      {/* Search Panel Overlay - Shows when clicked */}
+      {/* Search Panel */}
       {renderSearchPanel()}
+      
+      {/* Results Panel */}
+      {renderResultsPanel()}
     </>
   );
 };
