@@ -14,6 +14,13 @@ const MainLayout = ({
   // Add comprehensive debugging for auth context
   console.log('=== MainLayout Mounting ===');
   
+  // Declare variables outside try-catch so they're accessible in the component
+  let user = null;
+  let isAuthenticated = false;
+  let loginWithEmail = async () => ({ success: false, error: 'Auth context error' });
+  let signInWithGoogle = async () => ({ success: false, error: 'Auth context error' });
+  let logout = async () => {};
+  
   try {
     const authContext = useAuth();
     console.log('Auth Context received:', {
@@ -24,50 +31,42 @@ const MainLayout = ({
       isAuthenticated: authContext?.isAuthenticated
     });
     
-    // Destructure with safe defaults
-    const { 
-      user, 
-      loginWithEmail: authLoginWithEmail, 
-      signInWithGoogle: authSignInWithGoogle, 
-      logout: authLogout,
-      isAuthenticated 
-    } = authContext || {};
-    
-    // Create safe wrapper functions with fallbacks
-    const loginWithEmail = typeof authLoginWithEmail === 'function' 
-      ? authLoginWithEmail 
-      : async (email, password) => {
-          console.error('loginWithEmail is not a function, using fallback');
-          return { 
-            success: false, 
-            error: 'Authentication system not available' 
+    if (authContext) {
+      // Update variables with actual values from context
+      user = authContext.user;
+      isAuthenticated = authContext.isAuthenticated;
+      
+      // Create safe wrapper functions
+      loginWithEmail = typeof authContext.loginWithEmail === 'function' 
+        ? authContext.loginWithEmail 
+        : async (email, password) => {
+            console.error('loginWithEmail is not a function, using fallback');
+            return { 
+              success: false, 
+              error: 'Authentication system not available' 
+            };
           };
-        };
-    
-    const signInWithGoogle = typeof authSignInWithGoogle === 'function'
-      ? authSignInWithGoogle
-      : async () => {
-          console.error('signInWithGoogle is not a function, using fallback');
-          return { 
-            success: false, 
-            error: 'Google authentication not available' 
+      
+      signInWithGoogle = typeof authContext.signInWithGoogle === 'function'
+        ? authContext.signInWithGoogle
+        : async () => {
+            console.error('signInWithGoogle is not a function, using fallback');
+            return { 
+              success: false, 
+              error: 'Google authentication not available' 
+            };
           };
-        };
-    
-    const logout = typeof authLogout === 'function'
-      ? authLogout
-      : async () => {
-          console.error('logout is not a function, using fallback');
-        };
+      
+      logout = typeof authContext.logout === 'function'
+        ? authContext.logout
+        : async () => {
+            console.error('logout is not a function, using fallback');
+          };
+    }
     
   } catch (authError) {
     console.error('Error accessing auth context:', authError);
-    // Fallback context if auth fails
-    const user = null;
-    const isAuthenticated = false;
-    const loginWithEmail = async () => ({ success: false, error: 'Auth context error' });
-    const signInWithGoogle = async () => ({ success: false, error: 'Auth context error' });
-    const logout = async () => {};
+    // Variables already have fallback values from declarations above
   }
   
   const [sidebarOpen, setSidebarOpen] = useState(false);
