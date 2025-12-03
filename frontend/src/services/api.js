@@ -284,9 +284,9 @@ export const uploadAPI = {
   }
 };
 
-// Properties API with enhanced methods and search endpoints
+// Properties API with enhanced methods
 export const propertiesAPI = {
-  // Get all properties with optional filters (uses /properties endpoint)
+  // Get all properties with optional filters
   getProperties: (filters = {}) => {
     const {
       page = 1,
@@ -300,9 +300,7 @@ export const propertiesAPI = {
       city,
       featured,
       search,
-      location,
-      sortBy = 'createdAt',
-      sortOrder = 'desc'
+      sort
     } = filters;
 
     console.log('🔍 Fetching properties with filters:', filters);
@@ -320,177 +318,9 @@ export const propertiesAPI = {
         city,
         featured,
         search,
-        location,
-        sortBy,
-        sortOrder
+        sort
       }
     });
-  },
-
-  // Quick search properties (single query parameter)
-  quickSearch: (searchTerm, filters = {}) => {
-    const {
-      page = 1,
-      limit = 12
-    } = filters;
-
-    console.log('🔍 Quick search:', { searchTerm, ...filters });
-    
-    return apiService.get('/properties/search', {
-      params: {
-        q: searchTerm,
-        page,
-        limit
-      }
-    });
-  },
-
-  // Advanced search with multiple filters
-  advancedSearch: (filters = {}) => {
-    const {
-      page = 1,
-      limit = 12,
-      search,           // General search term
-      type,
-      status,
-      minPrice,
-      maxPrice,
-      priceRange,
-      bedrooms,
-      bathrooms,
-      minArea,
-      maxArea,
-      location,
-      city,
-      state,
-      country,
-      zipCode,
-      amenities,
-      yearBuilt,
-      minYearBuilt,
-      maxYearBuilt,
-      floors,
-      parking,
-      sortBy = 'createdAt',
-      sortOrder = 'desc'
-    } = filters;
-
-    console.log('🔍 Advanced search:', filters);
-    
-    // Build params object
-    const params = {
-      page,
-      limit,
-      search,
-      type,
-      status,
-      minPrice,
-      maxPrice,
-      priceRange,
-      bedrooms,
-      bathrooms,
-      minArea,
-      maxArea,
-      location,
-      city,
-      state,
-      country,
-      zipCode,
-      amenities,
-      yearBuilt,
-      minYearBuilt,
-      maxYearBuilt,
-      floors,
-      parking,
-      sortBy,
-      sortOrder
-    };
-
-    // Remove undefined/null/empty values
-    const cleanParams = Object.fromEntries(
-      Object.entries(params).filter(([_, v]) => 
-        v !== undefined && v !== null && v !== ''
-      )
-    );
-    
-    return apiService.get('/properties/search/advanced', {
-      params: cleanParams
-    });
-  },
-
-  // Filter properties without search
-  filterProperties: (filters = {}) => {
-    const {
-      page = 1,
-      limit = 12,
-      type,
-      status,
-      minPrice,
-      maxPrice,
-      bedrooms,
-      bathrooms,
-      city,
-      state,
-      country,
-      amenities,
-      featured,
-      sortBy = 'createdAt',
-      sortOrder = 'desc'
-    } = filters;
-
-    console.log('🔍 Filter properties:', filters);
-    
-    // Build params object
-    const params = {
-      page,
-      limit,
-      type,
-      status,
-      minPrice,
-      maxPrice,
-      bedrooms,
-      bathrooms,
-      city,
-      state,
-      country,
-      amenities,
-      featured,
-      sortBy,
-      sortOrder
-    };
-
-    // Remove undefined/null/empty values
-    const cleanParams = Object.fromEntries(
-      Object.entries(params).filter(([_, v]) => 
-        v !== undefined && v !== null && v !== ''
-      )
-    );
-    
-    return apiService.get('/properties/filter', {
-      params: cleanParams
-    });
-  },
-
-  // Unified search method that auto-selects endpoint
-  searchProperties: (filters = {}, mode = 'auto') => {
-    console.log(`🔍 Search properties with mode: ${mode}`, filters);
-    
-    switch (mode) {
-      case 'quick':
-        return propertiesAPI.quickSearch(filters.search || filters.q, filters);
-      case 'advanced':
-        return propertiesAPI.advancedSearch(filters);
-      case 'filter':
-        return propertiesAPI.filterProperties(filters);
-      case 'auto':
-      default:
-        // Auto-detect: if there's a search term or location, use advanced search
-        if (filters.search || filters.location || filters.q) {
-          return propertiesAPI.advancedSearch(filters);
-        } else {
-          return propertiesAPI.filterProperties(filters);
-        }
-    }
   },
 
   // Get single property
@@ -500,8 +330,8 @@ export const propertiesAPI = {
   },
 
   // Get featured properties
-  getFeaturedProperties: (limit = 6) => 
-    apiService.get('/properties/featured', { params: { limit } }),
+  getFeaturedProperties: () => 
+    apiService.get('/properties/featured'),
 
   // Get properties by agent
   getPropertiesByAgent: (agentId) => 
