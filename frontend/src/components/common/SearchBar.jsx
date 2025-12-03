@@ -433,7 +433,7 @@ const SearchBar = ({ placeholder = "Search properties..." }) => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Property Type</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Property Types</label>
               <select
                 value={filters.type}
                 onChange={(e) => handleFilterChange('type', e.target.value)}
