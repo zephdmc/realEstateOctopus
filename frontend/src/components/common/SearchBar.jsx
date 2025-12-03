@@ -69,7 +69,7 @@ const SearchBar = ({ placeholder = "Search properties..." }) => {
       if (beds >= 1 && beds <= 4) {
         parsed.bedrooms = beds;
       } else if (beds >= 5) {
-        parsed.bedrooms = '5+';
+        parsed.bedrooms = 5; // Send 5 for "5+" (backend will handle $gte)
       }
     }
     
@@ -125,7 +125,7 @@ const SearchBar = ({ placeholder = "Search properties..." }) => {
     return parsed;
   };
 
-  // Convert UI filters to API filters
+  // Convert UI filters to API filters - UPDATED TO MATCH BACKEND
   const convertToApiFilters = (searchTerm, uiFilters) => {
     const apiFilters = {
       page: 1,
@@ -142,6 +142,7 @@ const SearchBar = ({ placeholder = "Search properties..." }) => {
     Object.assign(apiFilters, termFilters);
     
     // Apply explicit UI filters (override term filters when there's a conflict)
+    // Map frontend field names to backend field names
     if (uiFilters.type && uiFilters.type !== 'Any Type') {
       apiFilters.type = uiFilters.type;
     }
@@ -162,10 +163,16 @@ const SearchBar = ({ placeholder = "Search properties..." }) => {
       }
     }
     
+    // Handle bedrooms parameter - backend expects numeric value
     if (uiFilters.bedrooms && uiFilters.bedrooms !== 'Any') {
-      apiFilters.bedrooms = uiFilters.bedrooms === '5+' ? '5+' : parseInt(uiFilters.bedrooms);
+      if (uiFilters.bedrooms === '5+') {
+        apiFilters.bedrooms = 5; // Send 5, backend will handle $gte
+      } else {
+        apiFilters.bedrooms = parseInt(uiFilters.bedrooms);
+      }
     }
     
+    // Your backend expects 'location' parameter for location search
     if (uiFilters.location) {
       apiFilters.location = uiFilters.location;
     }
@@ -184,6 +191,11 @@ const SearchBar = ({ placeholder = "Search properties..." }) => {
     }
     
     console.log('🚀 Final API Filters:', apiFilters);
+    
+    // Log the actual URL that will be called
+    const queryString = new URLSearchParams(apiFilters).toString();
+    console.log('🔗 API URL would be:', `/api/properties?${queryString}`);
+    
     return apiFilters;
   };
 
@@ -191,7 +203,7 @@ const SearchBar = ({ placeholder = "Search properties..." }) => {
   const handleSearch = async (e) => {
     if (e) e.preventDefault();
     
-    // Clear any previous error
+    console.log('🎯 Starting search with:', { searchTerm, filters });
     setSearchError(null);
     setIsSearching(true);
     
