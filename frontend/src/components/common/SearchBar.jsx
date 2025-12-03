@@ -23,8 +23,16 @@ const SearchBar = ({ placeholder = "Search properties..." }) => {
   // Use ref for debouncing
   const searchTimeoutRef = useRef(null);
   
-  // ✅ FIXED: Pass false for immediate to prevent initial fetch
-  const { properties, loading, error, pagination, clearProperties } = useProperties(apiFilters, false);
+  // ✅ Use the new hook with 'search' mode and immediate = false
+  const { 
+    properties, 
+    loading, 
+    error, 
+    pagination, 
+    searchProperties, 
+    clearProperties,
+    hasSearched: hookHasSearched 
+  } = useProperties({}, 'search', false);
 
   const propertyTypes = [
     'Any Type',
@@ -75,11 +83,11 @@ const SearchBar = ({ placeholder = "Search properties..." }) => {
     
     // Extract property type
     const typeKeywords = {
-      'house': 'House',
-      'apartment': 'Apartment',
-      'condo': 'Condo',
-      'villa': 'Villa',
-      'commercial': 'Commercial'
+      'house': 'house',
+      'apartment': 'apartment',
+      'condo': 'condo',
+      'villa': 'villa',
+      'commercial': 'commercial'
     };
     
     for (const [keyword, typeValue] of Object.entries(typeKeywords)) {
@@ -143,7 +151,8 @@ const SearchBar = ({ placeholder = "Search properties..." }) => {
     
     // Apply explicit UI filters
     if (uiFilters.type && uiFilters.type !== 'Any Type') {
-      apiFilters.type = uiFilters.type;
+      // Convert to lowercase for backend
+      apiFilters.type = uiFilters.type.toLowerCase();
     }
     
     if (uiFilters.priceRange && uiFilters.priceRange !== 'Any Price') {
@@ -186,7 +195,7 @@ const SearchBar = ({ placeholder = "Search properties..." }) => {
     return apiFilters;
   };
 
-  // Handle search button click - UPDATED
+  // Handle search button click - UPDATED to use searchProperties
   const handleSearch = async (e) => {
     if (e) e.preventDefault();
     
@@ -208,7 +217,10 @@ const SearchBar = ({ placeholder = "Search properties..." }) => {
       
       console.log('🔍 Setting API filters to:', newApiFilters);
       
-      // ✅ Set filters to trigger API call
+      // ✅ Use the dedicated searchProperties method
+      await searchProperties(newApiFilters);
+      
+      // Update API filters state for tracking
       setApiFilters(newApiFilters);
       setHasSearched(true);
       
@@ -278,7 +290,7 @@ const SearchBar = ({ placeholder = "Search properties..." }) => {
     }
   };
 
-  // Clear all filters - UPDATED
+  // Clear all filters
   const clearFilters = () => {
     setSearchTerm('');
     setFilters({
@@ -287,16 +299,14 @@ const SearchBar = ({ placeholder = "Search properties..." }) => {
       bedrooms: '',
       location: ''
     });
-    setApiFilters(null); // Reset to null
+    setApiFilters(null);
     setHasSearched(false);
     setShowSearchPanel(false);
     setShowResults(false);
     setSearchError(null);
     
-    // ✅ Clear properties in the hook
-    if (clearProperties) {
-      clearProperties();
-    }
+    // Clear properties in the hook
+    clearProperties();
   };
 
   // Open search panel
@@ -305,9 +315,9 @@ const SearchBar = ({ placeholder = "Search properties..." }) => {
     setShowResults(false);
   };
 
-  // Open results panel - UPDATED
+  // Open results panel
   const openResultsPanel = () => {
-    if (hasSearched && apiFilters !== null) {
+    if (hookHasSearched && properties.length > 0) {
       setShowResults(true);
       setShowSearchPanel(false);
     } else {
@@ -347,14 +357,14 @@ const SearchBar = ({ placeholder = "Search properties..." }) => {
         bottom: '1.5rem',
         right: '1.5rem'
       }}
-      aria-label={hasSearched ? "Show search results" : "Open search panel"}
-      title={hasSearched ? "Click to view search results" : "Click to search properties"}
+      aria-label={hookHasSearched ? "Show search results" : "Open search panel"}
+      title={hookHasSearched ? "Click to view search results" : "Click to search properties"}
     >
       <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
       </svg>
       
-      {hasSearched && !showResults && (
+      {hookHasSearched && !showResults && (
         <div className="absolute -top-1 -right-1">
           <div className="relative">
             <div className="animate-ping absolute inline-flex h-3 w-3 rounded-full bg-red-400 opacity-75"></div>
@@ -604,7 +614,7 @@ const SearchBar = ({ placeholder = "Search properties..." }) => {
                 <p className="text-gray-600 mb-4">{error || searchError}</p>
                 <div className="flex flex-col sm:flex-row gap-3 justify-center">
                   <button
-                    onClick={() => setApiFilters({...apiFilters})}
+                    onClick={() => searchProperties(apiFilters)}
                     className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-200"
                   >
                     Try Again
