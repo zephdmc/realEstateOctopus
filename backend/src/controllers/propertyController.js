@@ -684,3 +684,400 @@ export const setFeaturedImage = asyncHandler(async (req, res) => {
     message: 'Featured image set successfully'
   });
 });
+
+// ... (keep all your existing imports and functions above) ...
+
+// @desc    Quick search properties (single query parameter)
+// @route   GET /api/properties/search
+// @access  Public
+export const quickSearch = asyncHandler(async (req, res) => {
+  const {
+    q: searchTerm, // Single search term
+    page = 1,
+    limit = 12
+  } = req.query;
+
+  console.log('🔍 Quick search with term:', searchTerm);
+
+  // Build filter object
+  const filter = { isActive: true };
+
+  if (searchTerm) {
+    const searchRegex = new RegExp(searchTerm, 'i');
+    filter.$or = [
+      { title: searchRegex },
+      { description: searchRegex },
+      { 'location.address': searchRegex },
+      { 'location.city': searchRegex },
+      { 'location.state': searchRegex },
+      { 'location.country': searchRegex }
+    ];
+  }
+
+  console.log('🎯 Quick search filter:', JSON.stringify(filter, null, 2));
+
+  // Calculate pagination
+  const pageNum = parseInt(page);
+  const limitNum = parseInt(limit);
+  const skip = (pageNum - 1) * limitNum;
+
+  // Execute query
+  const properties = await Property.find(filter)
+    .populate('images')
+    .populate('featuredImage')
+    .skip(skip)
+    .limit(limitNum)
+    .sort({ createdAt: -1 });
+
+  const total = await Property.countDocuments(filter);
+
+  console.log(`✅ Quick search found ${properties.length} of ${total} properties`);
+
+  res.status(200).json({
+    success: true,
+    count: properties.length,
+    total,
+    pagination: {
+      page: pageNum,
+      pages: Math.ceil(total / limitNum),
+      limit: limitNum
+    },
+    data: properties
+  });
+});
+
+// @desc    Advanced search properties with multiple filters
+// @route   GET /api/properties/search/advanced
+// @access  Public
+export const searchProperties = asyncHandler(async (req, res) => {
+  const {
+    // Search parameters
+    search,           // General search term
+    type,             // Property type
+    status,           // Property status
+    
+    // Price filters
+    minPrice,
+    maxPrice,
+    priceRange,       // Pre-defined range
+    
+    // Specifications
+    bedrooms,
+    bathrooms,
+    minArea,
+    maxArea,
+    areaUnit,
+    
+    // Location
+    location,         // General location search
+    city,
+    state,
+    country,
+    zipCode,
+    
+    // Advanced filters
+    amenities,        // Comma-separated amenities
+    yearBuilt,
+    minYearBuilt,
+    maxYearBuilt,
+    floors,
+    parking,
+    
+    // Sorting and pagination
+    sortBy = 'createdAt',
+    sortOrder = 'desc',
+    page = 1,
+    limit = 12
+  } = req.query;
+
+  console.log('🔍 Advanced search query:', req.query);
+
+  // Build query object
+  const query = { isActive: true };
+
+  // === GENERAL SEARCH ===
+  if (search) {
+    const searchRegex = new RegExp(search, 'i');
+    query.$or = [
+      { title: searchRegex },
+      { description: searchRegex },
+      { 'location.address': searchRegex },
+      { 'location.city': searchRegex },
+      { 'location.state': searchRegex },
+      { 'location.country': searchRegex }
+    ];
+  }
+
+  // === EXACT MATCHES ===
+  if (type) {
+    const typeLower = type.toLowerCase();
+    query.type = typeLower;
+  }
+  
+  if (status) query.status = status;
+
+  // === PRICE FILTERS ===
+  if (minPrice || maxPrice) {
+    query.price = {};
+    if (minPrice) query.price.$gte = parseFloat(minPrice);
+    if (maxPrice) query.price.$lte = parseFloat(maxPrice);
+  }
+  
+  // Handle pre-defined price ranges
+  if (priceRange) {
+    query.price = query.price || {};
+    const ranges = {
+      'under-100k': { $lte: 100000 },
+      '100k-200k': { $gte: 100000, $lte: 200000 },
+      '200k-300k': { $gte: 200000, $lte: 300000 },
+      '300k-500k': { $gte: 300000, $lte: 500000 },
+      'over-500k': { $gte: 500000 }
+    };
+    
+    if (ranges[priceRange]) {
+      Object.assign(query.price, ranges[priceRange]);
+    }
+  }
+
+  // === BEDROOMS FILTER ===
+  if (bedrooms) {
+    const bedNum = parseInt(bedrooms);
+    if (bedNum >= 5) {
+      query['specifications.bedrooms'] = { $gte: 5 };
+    } else {
+      query['specifications.bedrooms'] = bedNum;
+    }
+  }
+
+  // === BATHROOMS FILTER ===
+  if (bathrooms) {
+    query['specifications.bathrooms'] = parseFloat(bathrooms);
+  }
+
+  // === AREA FILTER ===
+  if (minArea || maxArea) {
+    query['specifications.area'] = {};
+    if (minArea) query['specifications.area'].$gte = parseInt(minArea);
+    if (maxArea) query['specifications.area'].$lte = parseInt(maxArea);
+  }
+  
+  // Convert area units if needed
+  if (areaUnit && (minArea || maxArea)) {
+    // Add logic for area unit conversion if needed
+    console.log('📏 Area unit specified:', areaUnit);
+  }
+
+  // === LOCATION FILTERS ===
+  if (location) {
+    const locationRegex = new RegExp(location, 'i');
+    const locationQuery = {
+      $or: [
+        { 'location.address': locationRegex },
+        { 'location.city': locationRegex },
+        { 'location.state': locationRegex },
+        { 'location.country': locationRegex }
+      ]
+    };
+    
+    if (query.$or) {
+      query.$and = [query.$or, locationQuery];
+      delete query.$or;
+    } else {
+      Object.assign(query, locationQuery);
+    }
+  }
+  
+  // Exact location filters
+  if (city) query['location.city'] = new RegExp(city, 'i');
+  if (state) query['location.state'] = new RegExp(state, 'i');
+  if (country) query['location.country'] = new RegExp(country, 'i');
+  if (zipCode) query['location.zipCode'] = zipCode;
+
+  // === AMENITIES FILTER ===
+  if (amenities) {
+    const amenityArray = Array.isArray(amenities) 
+      ? amenities 
+      : amenities.split(',').map(a => a.trim());
+    query.amenities = { $all: amenityArray };
+  }
+
+  // === YEAR BUILT FILTER ===
+  if (yearBuilt) {
+    query['specifications.yearBuilt'] = parseInt(yearBuilt);
+  }
+  
+  if (minYearBuilt || maxYearBuilt) {
+    query['specifications.yearBuilt'] = query['specifications.yearBuilt'] || {};
+    if (minYearBuilt) query['specifications.yearBuilt'].$gte = parseInt(minYearBuilt);
+    if (maxYearBuilt) query['specifications.yearBuilt'].$lte = parseInt(maxYearBuilt);
+  }
+
+  // === FLOORS AND PARKING ===
+  if (floors) query['specifications.floors'] = parseInt(floors);
+  if (parking) query['specifications.parking'] = parseInt(parking);
+
+  console.log('🎯 Advanced search query:', JSON.stringify(query, null, 2));
+
+  // === PAGINATION ===
+  const pageNum = parseInt(page);
+  const limitNum = parseInt(limit);
+  const skip = (pageNum - 1) * limitNum;
+
+  // === SORTING ===
+  const sort = {};
+  const allowedSortFields = ['price', 'createdAt', 'updatedAt', 'specifications.area', 'specifications.bedrooms'];
+  const sortField = allowedSortFields.includes(sortBy) ? sortBy : 'createdAt';
+  const sortDirection = sortOrder === 'asc' ? 1 : -1;
+  sort[sortField] = sortDirection;
+
+  // === EXECUTE QUERY ===
+  const properties = await Property.find(query)
+    .populate('images')
+    .populate('featuredImage')
+    .sort(sort)
+    .skip(skip)
+    .limit(limitNum);
+
+  const total = await Property.countDocuments(query);
+
+  console.log(`✅ Advanced search found ${properties.length} of ${total} properties`);
+
+  res.status(200).json({
+    success: true,
+    count: properties.length,
+    total,
+    pagination: {
+      page: pageNum,
+      pages: Math.ceil(total / limitNum),
+      limit: limitNum
+    },
+    filters: {
+      applied: Object.keys(req.query).length,
+      breakdown: {
+        search: !!search,
+        type: !!type,
+        price: !!(minPrice || maxPrice || priceRange),
+        bedrooms: !!bedrooms,
+        location: !!(location || city || state || country),
+        amenities: !!amenities
+      }
+    },
+    data: properties
+  });
+});
+
+// @desc    Filter properties without general search
+// @route   GET /api/properties/filter
+// @access  Public
+export const filterProperties = asyncHandler(async (req, res) => {
+  const {
+    // Exact filters only (no general search)
+    type,
+    status,
+    minPrice,
+    maxPrice,
+    bedrooms,
+    bathrooms,
+    city,
+    state,
+    country,
+    amenities,
+    featured,
+    
+    // Sorting and pagination
+    sortBy = 'createdAt',
+    sortOrder = 'desc',
+    page = 1,
+    limit = 12
+  } = req.query;
+
+  console.log('🔍 Filter query (no search):', req.query);
+
+  // Build query object
+  const query = { isActive: true };
+
+  // Only exact matches, no regex searches
+  if (type) {
+    const typeLower = type.toLowerCase();
+    query.type = typeLower;
+  }
+  
+  if (status) query.status = status;
+  if (featured === 'true') query.featured = true;
+
+  // Price range
+  if (minPrice || maxPrice) {
+    query.price = {};
+    if (minPrice) query.price.$gte = parseFloat(minPrice);
+    if (maxPrice) query.price.$lte = parseFloat(maxPrice);
+  }
+
+  // Bedrooms
+  if (bedrooms) {
+    const bedNum = parseInt(bedrooms);
+    if (bedNum >= 5) {
+      query['specifications.bedrooms'] = { $gte: 5 };
+    } else {
+      query['specifications.bedrooms'] = bedNum;
+    }
+  }
+
+  // Bathrooms
+  if (bathrooms) {
+    query['specifications.bathrooms'] = parseFloat(bathrooms);
+  }
+
+  // Exact location matches
+  if (city) query['location.city'] = new RegExp(city, 'i');
+  if (state) query['location.state'] = new RegExp(state, 'i');
+  if (country) query['location.country'] = new RegExp(country, 'i');
+
+  // Amenities
+  if (amenities) {
+    const amenityArray = Array.isArray(amenities) 
+      ? amenities 
+      : amenities.split(',').map(a => a.trim());
+    query.amenities = { $all: amenityArray };
+  }
+
+  console.log('🎯 Filter query:', JSON.stringify(query, null, 2));
+
+  // Pagination
+  const pageNum = parseInt(page);
+  const limitNum = parseInt(limit);
+  const skip = (pageNum - 1) * limitNum;
+
+  // Sorting
+  const sort = {};
+  const allowedSortFields = ['price', 'createdAt', 'updatedAt'];
+  const sortField = allowedSortFields.includes(sortBy) ? sortBy : 'createdAt';
+  const sortDirection = sortOrder === 'asc' ? 1 : -1;
+  sort[sortField] = sortDirection;
+
+  // Execute query
+  const properties = await Property.find(query)
+    .populate('images')
+    .populate('featuredImage')
+    .sort(sort)
+    .skip(skip)
+    .limit(limitNum);
+
+  const total = await Property.countDocuments(query);
+
+  console.log(`✅ Filter found ${properties.length} of ${total} properties`);
+
+  res.status(200).json({
+    success: true,
+    count: properties.length,
+    total,
+    pagination: {
+      page: pageNum,
+      pages: Math.ceil(total / limitNum),
+      limit: limitNum
+    },
+    filters: Object.keys(req.query).length,
+    data: properties
+  });
+});
+
+// ... (rest of your existing functions remain unchanged) ...
