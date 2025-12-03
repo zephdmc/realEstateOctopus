@@ -22,20 +22,27 @@ const SearchBar = ({ placeholder = "Search properties..." }) => {
   // Use ref for debouncing
   const searchTimeoutRef = useRef(null);
   
-  // ✅ Use the hook with empty initial filters - it will fetch all properties
+  // ✅ FIXED: Use the hook correctly - remove the extra parameters
   const { 
     properties: allProperties, 
     loading, 
     error, 
-    fetchProperties 
-  } = useProperties({});
+    fetchProperties,
+    hasProperties
+  } = useProperties({}); // Just pass empty filters object
 
   // Filter properties based on search criteria
   const filteredProperties = useMemo(() => {
     if (!allProperties || allProperties.length === 0) return [];
     
+    console.log('🔄 Filtering properties. Total:', allProperties.length);
+    console.log('🔍 Search term:', searchTerm);
+    console.log('🎯 Filters:', filters);
+    console.log('🔎 Has searched?', hasSearched);
+    
     // If user hasn't searched yet, return empty array (hide all properties)
     if (!hasSearched && !showResults) {
+      console.log('👁️‍🗨️ User hasn\'t searched yet - hiding all properties');
       return [];
     }
     
@@ -45,44 +52,55 @@ const SearchBar = ({ placeholder = "Search properties..." }) => {
     // Apply search term filter (by title, description, or location)
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
+      console.log('🔍 Applying search term:', term);
+      
       filtered = filtered.filter(property => {
-        const title = property.title?.toLowerCase() || '';
-        const description = property.description?.toLowerCase() || '';
-        const location = property.location?.toLowerCase() || '';
-        const address = property.address?.toLowerCase() || '';
-        const city = property.city?.toLowerCase() || '';
+        const title = (property.title || '').toString().toLowerCase();
+        const description = (property.description || '').toString().toLowerCase();
+        const location = (property.location || '').toString().toLowerCase();
+        const address = (property.address || '').toString().toLowerCase();
+        const city = (property.city || '').toString().toLowerCase();
         
-        return title.includes(term) || 
+        const matches = title.includes(term) || 
                description.includes(term) || 
                location.includes(term) ||
                address.includes(term) ||
                city.includes(term);
+        
+        return matches;
       });
+      
+      console.log(`🔍 After search term filter: ${filtered.length} properties`);
     }
     
     // Apply property type filter
     if (filters.type && filters.type !== 'Any Type') {
+      console.log('🔍 Applying type filter:', filters.type);
       filtered = filtered.filter(property => {
-        const propertyType = property.type?.toLowerCase() || '';
+        const propertyType = (property.type || '').toString().toLowerCase();
         const filterType = filters.type.toLowerCase();
         return propertyType === filterType;
       });
+      console.log(`🔍 After type filter: ${filtered.length} properties`);
     }
     
     // Apply bedrooms filter
     if (filters.bedrooms && filters.bedrooms !== 'Any') {
+      console.log('🔍 Applying bedrooms filter:', filters.bedrooms);
       filtered = filtered.filter(property => {
-        const beds = property.bedrooms || 0;
+        const beds = parseInt(property.bedrooms) || 0;
         if (filters.bedrooms === '5+') {
           return beds >= 5;
         } else {
           return beds === parseInt(filters.bedrooms);
         }
       });
+      console.log(`🔍 After bedrooms filter: ${filtered.length} properties`);
     }
     
     // Apply price range filter
     if (filters.priceRange && filters.priceRange !== 'Any Price') {
+      console.log('🔍 Applying price filter:', filters.priceRange);
       const priceMap = {
         'Under $100,000': { min: 0, max: 100000 },
         '$100,000 - $200,000': { min: 100000, max: 200000 },
@@ -94,28 +112,32 @@ const SearchBar = ({ placeholder = "Search properties..." }) => {
       const range = priceMap[filters.priceRange];
       if (range) {
         filtered = filtered.filter(property => {
-          const price = property.price || 0;
+          const price = parseInt(property.price) || 0;
           return price >= range.min && price <= range.max;
         });
       }
+      console.log(`🔍 After price filter: ${filtered.length} properties`);
     }
     
     // Apply location filter
     if (filters.location) {
+      console.log('🔍 Applying location filter:', filters.location);
       const locationTerm = filters.location.toLowerCase();
       filtered = filtered.filter(property => {
-        const location = property.location?.toLowerCase() || '';
-        const address = property.address?.toLowerCase() || '';
-        const city = property.city?.toLowerCase() || '';
-        const country = property.country?.toLowerCase() || '';
+        const location = (property.location || '').toString().toLowerCase();
+        const address = (property.address || '').toString().toLowerCase();
+        const city = (property.city || '').toString().toLowerCase();
+        const country = (property.country || '').toString().toLowerCase();
         
         return location.includes(locationTerm) || 
                address.includes(locationTerm) ||
                city.includes(locationTerm) ||
                country.includes(locationTerm);
       });
+      console.log(`🔍 After location filter: ${filtered.length} properties`);
     }
     
+    console.log(`✅ Final filtered properties: ${filtered.length}`);
     return filtered;
   }, [allProperties, searchTerm, filters, hasSearched, showResults]);
 
@@ -151,6 +173,7 @@ const SearchBar = ({ placeholder = "Search properties..." }) => {
     if (e) e.preventDefault();
     
     console.log('🎯 Starting search with:', { searchTerm, filters });
+    console.log('📊 Total properties available:', allProperties?.length || 0);
     setSearchError(null);
     setIsSearching(true);
     
@@ -163,9 +186,7 @@ const SearchBar = ({ placeholder = "Search properties..." }) => {
         throw new Error('Please enter search criteria');
       }
       
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
+      console.log('✅ Valid search criteria. Has searched will be set to true');
       setHasSearched(true);
       
       // Close search panel, show results
@@ -257,10 +278,16 @@ const SearchBar = ({ placeholder = "Search properties..." }) => {
 
   // Open results panel
   const openResultsPanel = () => {
+    console.log('📱 Opening results panel');
+    console.log('🔍 hasSearched:', hasSearched);
+    console.log('🏠 filteredProperties length:', filteredProperties?.length || 0);
+    
     if (hasSearched && filteredProperties.length > 0) {
+      console.log('✅ Showing results panel');
       setShowResults(true);
       setShowSearchPanel(false);
     } else {
+      console.log('🔍 Opening search panel instead');
       openSearchPanel();
     }
   };
@@ -355,7 +382,10 @@ const SearchBar = ({ placeholder = "Search properties..." }) => {
               <input
                 type="text"
                 value={searchTerm}
-                onChange={(e) => handleSearchTermChange(e.target.value)}
+                onChange={(e) => {
+                  console.log('📝 Search term changed to:', e.target.value);
+                  handleSearchTermChange(e.target.value);
+                }}
                 placeholder={placeholder}
                 className="block w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
                 autoFocus
@@ -376,7 +406,10 @@ const SearchBar = ({ placeholder = "Search properties..." }) => {
               <label className="block text-sm font-medium text-gray-700 mb-2">Property Type</label>
               <select
                 value={filters.type}
-                onChange={(e) => handleFilterChange('type', e.target.value)}
+                onChange={(e) => {
+                  console.log('🎯 Type filter changed:', e.target.value);
+                  handleFilterChange('type', e.target.value);
+                }}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
               >
                 {propertyTypes.map(type => (
@@ -391,7 +424,10 @@ const SearchBar = ({ placeholder = "Search properties..." }) => {
               <label className="block text-sm font-medium text-gray-700 mb-2">Price Range</label>
               <select
                 value={filters.priceRange}
-                onChange={(e) => handleFilterChange('priceRange', e.target.value)}
+                onChange={(e) => {
+                  console.log('💰 Price filter changed:', e.target.value);
+                  handleFilterChange('priceRange', e.target.value);
+                }}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
               >
                 {priceRanges.map(range => (
@@ -406,7 +442,10 @@ const SearchBar = ({ placeholder = "Search properties..." }) => {
               <label className="block text-sm font-medium text-gray-700 mb-2">Bedrooms</label>
               <select
                 value={filters.bedrooms}
-                onChange={(e) => handleFilterChange('bedrooms', e.target.value)}
+                onChange={(e) => {
+                  console.log('🛏️ Bedrooms filter changed:', e.target.value);
+                  handleFilterChange('bedrooms', e.target.value);
+                }}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
               >
                 {bedrooms.map(bed => (
@@ -422,7 +461,10 @@ const SearchBar = ({ placeholder = "Search properties..." }) => {
               <input
                 type="text"
                 value={filters.location}
-                onChange={(e) => handleFilterChange('location', e.target.value)}
+                onChange={(e) => {
+                  console.log('📍 Location filter changed:', e.target.value);
+                  handleFilterChange('location', e.target.value);
+                }}
                 placeholder="Enter location"
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
               />
@@ -500,7 +542,7 @@ const SearchBar = ({ placeholder = "Search properties..." }) => {
                   )}
                 </h3>
                 <p className="text-sm text-gray-500 mt-1">
-                  {loading ? 'Searching...' : 
+                  {loading ? 'Loading...' : 
                    filteredProperties && filteredProperties.length > 0 ? 
                    `Found ${filteredProperties.length} propert${filteredProperties.length === 1 ? 'y' : 'ies'}` : 
                    'No properties found'}
@@ -637,13 +679,16 @@ const SearchBar = ({ placeholder = "Search properties..." }) => {
             {!loading && !error && !searchError && filteredProperties && filteredProperties.length > 0 && (
               <>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
-                  {filteredProperties.map((property) => (
-                    <PropertyCard
-                      key={property._id || property.id}
-                      property={property}
-                      className="transform transition-transform duration-200 hover:scale-[1.02]"
-                    />
-                  ))}
+                  {filteredProperties.map((property, index) => {
+                    console.log(`🏠 Rendering property ${index}:`, property.title || property._id);
+                    return (
+                      <PropertyCard
+                        key={property._id || property.id || index}
+                        property={property}
+                        className="transform transition-transform duration-200 hover:scale-[1.02]"
+                      />
+                    );
+                  })}
                 </div>
                 
                 <div className="mt-8 text-center">
