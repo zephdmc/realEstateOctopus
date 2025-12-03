@@ -228,13 +228,18 @@ export const getProperties = asyncHandler(async (req, res) => {
     bathrooms,
     city,
     featured,
-    search
+    search,
+    location
   } = req.query;
 
-  // Build filter object
-  const filter = { isActive: true }; // Add active filter
+  console.log('🔍 Query parameters received:', req.query);
 
-  if (type) filter.type = type;
+  // Build filter object
+  const filter = { isActive: true };
+
+  // FIX: Convert type to lowercase to match database schema
+  if (type) filter.type = type.toLowerCase();
+  
   if (status) filter.status = status;
   if (featured) filter.featured = featured === 'true';
   
@@ -244,29 +249,61 @@ export const getProperties = asyncHandler(async (req, res) => {
     if (maxPrice) filter.price.$lte = parseInt(maxPrice);
   }
   
-  if (bedrooms) filter['specifications.bedrooms'] = { $gte: parseInt(bedrooms) };
-  if (bathrooms) filter['specifications.bathrooms'] = { $gte: parseInt(bathrooms) };
+  // FIXED: Proper bedrooms filtering (exact match for 1-4, $gte for 5+)
+  if (bedrooms) {
+    const bedroomsNum = parseInt(bedrooms);
+    console.log(`🛏️ Filtering by bedrooms: ${bedroomsNum}`);
+    
+    if (bedroomsNum >= 5) {
+      filter['specifications.bedrooms'] = { $gte: 5 };
+    } else {
+      filter['specifications.bedrooms'] = bedroomsNum;
+    }
+  }
+  
+  // FIXED: Bathrooms exact match
+  if (bathrooms) filter['specifications.bathrooms'] = parseInt(bathrooms);
+  
   if (city) filter['location.city'] = new RegExp(city, 'i');
   
-  if (search) {
+  // Support for location parameter
+  if (location) {
     filter.$or = [
-      { title: new RegExp(search, 'i') },
-      { description: new RegExp(search, 'i') },
-      { 'location.address': new RegExp(search, 'i') },
-      { 'location.city': new RegExp(search, 'i') }
+      { 'location.address': new RegExp(location, 'i') },
+      { 'location.city': new RegExp(location, 'i') },
+      { 'location.state': new RegExp(location, 'i') },
+      { 'location.country': new RegExp(location, 'i') }
     ];
   }
+  
+  if (search) {
+    if (filter.$or) {
+      filter.$or.push(
+        { title: new RegExp(search, 'i') },
+        { description: new RegExp(search, 'i') }
+      );
+    } else {
+      filter.$or = [
+        { title: new RegExp(search, 'i') },
+        { description: new RegExp(search, 'i') },
+        { 'location.address': new RegExp(search, 'i') },
+        { 'location.city': new RegExp(search, 'i') }
+      ];
+    }
+  }
 
-  // Execute query with pagination and populate images
+  console.log('🎯 Final filter object:', JSON.stringify(filter, null, 2));
+
   const properties = await Property.find(filter)
-    .populate('images') // Populate image details
-    .populate('featuredImage') // Populate featured image
+    .populate('images')
+    .populate('featuredImage')
     .limit(limit * 1)
     .skip((page - 1) * limit)
     .sort({ createdAt: -1 });
 
-  // Get total count for pagination
   const total = await Property.countDocuments(filter);
+
+  console.log(`✅ Found ${properties.length} properties matching filters`);
 
   res.status(200).json({
     success: true,
