@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Header from '../common/Header';
 import Footer from '../common/Footer';
 // import Sidebar from './Sidebar';
@@ -14,15 +14,18 @@ const MainLayout = ({
   // Add comprehensive debugging for auth context
   console.log('=== MainLayout Mounting ===');
   
-  // Declare variables outside try-catch so they're accessible in the component
-  let user = null;
-  let isAuthenticated = false;
-  let loginWithEmail = async () => ({ success: false, error: 'Auth context error' });
-  let signInWithGoogle = async () => ({ success: false, error: 'Auth context error' });
-  let logout = async () => {};
+  // FIRST: Call all hooks at the top level
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [loginForm, setLoginForm] = useState({ email: '', password: '' });
+  const [loginError, setLoginError] = useState('');
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
   
-  try {
-    const authContext = useAuth();
+  // THEN: Get auth context
+  const authContext = useAuth();
+  
+  // Debug log
+  useEffect(() => {
     console.log('Auth Context received:', {
       user: authContext?.user,
       loginWithEmail: authContext?.loginWithEmail,
@@ -30,50 +33,41 @@ const MainLayout = ({
       logout: authContext?.logout,
       isAuthenticated: authContext?.isAuthenticated
     });
-    
-    if (authContext) {
-      // Update variables with actual values from context
-      user = authContext.user;
-      isAuthenticated = authContext.isAuthenticated;
-      
-      // Create safe wrapper functions
-      loginWithEmail = typeof authContext.loginWithEmail === 'function' 
-        ? authContext.loginWithEmail 
-        : async (email, password) => {
-            console.error('loginWithEmail is not a function, using fallback');
-            return { 
-              success: false, 
-              error: 'Authentication system not available' 
-            };
-          };
-      
-      signInWithGoogle = typeof authContext.signInWithGoogle === 'function'
-        ? authContext.signInWithGoogle
-        : async () => {
-            console.error('signInWithGoogle is not a function, using fallback');
-            return { 
-              success: false, 
-              error: 'Google authentication not available' 
-            };
-          };
-      
-      logout = typeof authContext.logout === 'function'
-        ? authContext.logout
-        : async () => {
-            console.error('logout is not a function, using fallback');
-          };
-    }
-    
-  } catch (authError) {
-    console.error('Error accessing auth context:', authError);
-    // Variables already have fallback values from declarations above
-  }
+  }, [authContext]);
   
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [showLoginModal, setShowLoginModal] = useState(false);
-  const [loginForm, setLoginForm] = useState({ email: '', password: '' });
-  const [loginError, setLoginError] = useState('');
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  // Safe auth functions with fallbacks
+  const loginWithEmail = useCallback(async (email, password) => {
+    if (typeof authContext?.loginWithEmail === 'function') {
+      return authContext.loginWithEmail(email, password);
+    }
+    console.error('loginWithEmail is not a function, using fallback');
+    return { 
+      success: false, 
+      error: 'Authentication system not available' 
+    };
+  }, [authContext]);
+  
+  const signInWithGoogle = useCallback(async () => {
+    if (typeof authContext?.signInWithGoogle === 'function') {
+      return authContext.signInWithGoogle();
+    }
+    console.error('signInWithGoogle is not a function, using fallback');
+    return { 
+      success: false, 
+      error: 'Google authentication not available' 
+    };
+  }, [authContext]);
+  
+  const logout = useCallback(async () => {
+    if (typeof authContext?.logout === 'function') {
+      return authContext.logout();
+    }
+    console.error('logout is not a function, using fallback');
+  }, [authContext]);
+  
+  // Safe auth values
+  const user = authContext?.user || null;
+  const isAuthenticated = authContext?.isAuthenticated || false;
 
   const containerClasses = {
     default: 'max-w-7xl',
