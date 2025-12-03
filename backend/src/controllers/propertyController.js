@@ -212,10 +212,6 @@ import Property from '../models/Property.js';
 import Upload from '../models/Upload.js'; // Add Upload model import
 import asyncHandler from '../utils/asyncHandler.js';
 import ErrorResponse from '../utils/ErrorResponse.js';
-
-// @desc    Get all properties
-// @route   GET /api/properties
-// @access  Public
 export const getProperties = asyncHandler(async (req, res) => {
   const {
     page = 1,
@@ -237,8 +233,13 @@ export const getProperties = asyncHandler(async (req, res) => {
   // Build filter object
   const filter = { isActive: true };
 
-  // FIX: Convert type to lowercase to match database schema
-  if (type) filter.type = type.toLowerCase();
+  // FIX: Make type filter case-insensitive
+  if (type) {
+    // Convert to lowercase to match database schema
+    const typeLower = type.toLowerCase();
+    console.log(`🏠 Type filter - Original: "${type}", Using: "${typeLower}"`);
+    filter.type = typeLower;
+  }
   
   if (status) filter.status = status;
   if (featured) filter.featured = featured === 'true';
@@ -249,7 +250,7 @@ export const getProperties = asyncHandler(async (req, res) => {
     if (maxPrice) filter.price.$lte = parseInt(maxPrice);
   }
   
-  // FIXED: Proper bedrooms filtering (exact match for 1-4, $gte for 5+)
+  // FIXED: Proper bedrooms filtering
   if (bedrooms) {
     const bedroomsNum = parseInt(bedrooms);
     console.log(`🛏️ Filtering by bedrooms: ${bedroomsNum}`);
@@ -261,12 +262,10 @@ export const getProperties = asyncHandler(async (req, res) => {
     }
   }
   
-  // FIXED: Bathrooms exact match
   if (bathrooms) filter['specifications.bathrooms'] = parseInt(bathrooms);
   
   if (city) filter['location.city'] = new RegExp(city, 'i');
   
-  // Support for location parameter
   if (location) {
     filter.$or = [
       { 'location.address': new RegExp(location, 'i') },
@@ -304,6 +303,9 @@ export const getProperties = asyncHandler(async (req, res) => {
   const total = await Property.countDocuments(filter);
 
   console.log(`✅ Found ${properties.length} properties matching filters`);
+  
+  // Debug: Log what types are actually being returned
+  console.log('📊 Types of found properties:', properties.map(p => p.type));
 
   res.status(200).json({
     success: true,
