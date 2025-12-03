@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useProperties } from '../../hooks/useProperties';
 import PropertyCard from '../properties/PropertyCard';
 
@@ -16,23 +16,108 @@ const SearchBar = ({ placeholder = "Search properties..." }) => {
   const [showSearchPanel, setShowSearchPanel] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
-  const [apiFilters, setApiFilters] = useState(null); // Start as null
   const [hasSearched, setHasSearched] = useState(false);
   const [searchError, setSearchError] = useState(null);
   
   // Use ref for debouncing
   const searchTimeoutRef = useRef(null);
   
-  // ✅ Use the new hook with 'search' mode and immediate = false
+  // ✅ Use the hook with empty initial filters - it will fetch all properties
   const { 
-    properties, 
+    properties: allProperties, 
     loading, 
     error, 
-    pagination, 
-    searchProperties, 
-    clearProperties,
-    hasSearched: hookHasSearched 
-  } = useProperties({}, 'search', false);
+    fetchProperties 
+  } = useProperties({});
+
+  // Filter properties based on search criteria
+  const filteredProperties = useMemo(() => {
+    if (!allProperties || allProperties.length === 0) return [];
+    
+    // If user hasn't searched yet, return empty array (hide all properties)
+    if (!hasSearched && !showResults) {
+      return [];
+    }
+    
+    // If user has searched, apply filters
+    let filtered = [...allProperties];
+    
+    // Apply search term filter (by title, description, or location)
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(property => {
+        const title = property.title?.toLowerCase() || '';
+        const description = property.description?.toLowerCase() || '';
+        const location = property.location?.toLowerCase() || '';
+        const address = property.address?.toLowerCase() || '';
+        const city = property.city?.toLowerCase() || '';
+        
+        return title.includes(term) || 
+               description.includes(term) || 
+               location.includes(term) ||
+               address.includes(term) ||
+               city.includes(term);
+      });
+    }
+    
+    // Apply property type filter
+    if (filters.type && filters.type !== 'Any Type') {
+      filtered = filtered.filter(property => {
+        const propertyType = property.type?.toLowerCase() || '';
+        const filterType = filters.type.toLowerCase();
+        return propertyType === filterType;
+      });
+    }
+    
+    // Apply bedrooms filter
+    if (filters.bedrooms && filters.bedrooms !== 'Any') {
+      filtered = filtered.filter(property => {
+        const beds = property.bedrooms || 0;
+        if (filters.bedrooms === '5+') {
+          return beds >= 5;
+        } else {
+          return beds === parseInt(filters.bedrooms);
+        }
+      });
+    }
+    
+    // Apply price range filter
+    if (filters.priceRange && filters.priceRange !== 'Any Price') {
+      const priceMap = {
+        'Under $100,000': { min: 0, max: 100000 },
+        '$100,000 - $200,000': { min: 100000, max: 200000 },
+        '$200,000 - $300,000': { min: 200000, max: 300000 },
+        '$300,000 - $500,000': { min: 300000, max: 500000 },
+        'Over $500,000': { min: 500000, max: Infinity }
+      };
+      
+      const range = priceMap[filters.priceRange];
+      if (range) {
+        filtered = filtered.filter(property => {
+          const price = property.price || 0;
+          return price >= range.min && price <= range.max;
+        });
+      }
+    }
+    
+    // Apply location filter
+    if (filters.location) {
+      const locationTerm = filters.location.toLowerCase();
+      filtered = filtered.filter(property => {
+        const location = property.location?.toLowerCase() || '';
+        const address = property.address?.toLowerCase() || '';
+        const city = property.city?.toLowerCase() || '';
+        const country = property.country?.toLowerCase() || '';
+        
+        return location.includes(locationTerm) || 
+               address.includes(locationTerm) ||
+               city.includes(locationTerm) ||
+               country.includes(locationTerm);
+      });
+    }
+    
+    return filtered;
+  }, [allProperties, searchTerm, filters, hasSearched, showResults]);
 
   const propertyTypes = [
     'Any Type',
@@ -61,141 +146,7 @@ const SearchBar = ({ placeholder = "Search properties..." }) => {
     '5+'
   ];
 
-  // Parse search term to extract filters
-  const parseSearchTerm = (term) => {
-    if (!term) return {};
-    
-    const termLower = term.toLowerCase().trim();
-    const parsed = {};
-    
-    console.log('🔍 Parsing search term:', termLower);
-    
-    // Extract bedrooms
-    const bedroomMatch = termLower.match(/(\d+)\s*(?:bed(?:room)?s?|br|bd|beds?)/) || termLower.match(/^(\d+)$/);
-    if (bedroomMatch) {
-      const beds = parseInt(bedroomMatch[1]);
-      if (beds >= 1 && beds <= 4) {
-        parsed.bedrooms = beds;
-      } else if (beds >= 5) {
-        parsed.bedrooms = 5;
-      }
-    }
-    
-    // Extract property type
-    const typeKeywords = {
-      'house': 'house',
-      'apartment': 'apartment',
-      'condo': 'condo',
-      'villa': 'villa',
-      'commercial': 'commercial'
-    };
-    
-    for (const [keyword, typeValue] of Object.entries(typeKeywords)) {
-      if (termLower.includes(keyword)) {
-        parsed.type = typeValue;
-        break;
-      }
-    }
-    
-    // Extract price
-    const priceMatch = termLower.match(/(under|below|less than|up to|over|above|more than)?\s*\$?\s*(\d+(?:,\d+)*(?:\.\d+)?)\s*(k|m|million)?/);
-    if (priceMatch) {
-      const [, modifier, amountStr, unit] = priceMatch;
-      let amount = parseFloat(amountStr.replace(/,/g, ''));
-      
-      if (unit === 'k' || termLower.includes('thousand')) amount *= 1000;
-      if (unit === 'm' || termLower.includes('million')) amount *= 1000000;
-      
-      if (modifier) {
-        const modLower = modifier.toLowerCase();
-        if (modLower.includes('under') || modLower.includes('below') || modLower.includes('less')) {
-          parsed.maxPrice = amount;
-        } else if (modLower.includes('over') || modLower.includes('above') || modLower.includes('more')) {
-          parsed.minPrice = amount;
-        }
-      } else {
-        parsed.minPrice = amount * 0.8;
-        parsed.maxPrice = amount * 1.2;
-      }
-    }
-    
-    // If search term looks like a location
-    if (Object.keys(parsed).length === 0 && termLower.length > 0) {
-      const words = termLower.split(/\s+/);
-      if (words.length <= 3 && !/^\d+$/.test(termLower)) {
-        parsed.location = term;
-      } else {
-        parsed.search = term;
-      }
-    }
-    
-    console.log('✅ Parsed filters:', parsed);
-    return parsed;
-  };
-
-  // Convert UI filters to API filters
-  const convertToApiFilters = (searchTerm, uiFilters) => {
-    const apiFilters = {
-      page: 1,
-      limit: 12
-    };
-
-    // Parse search term first
-    const termFilters = parseSearchTerm(searchTerm);
-    
-    console.log('📊 Term filters:', termFilters);
-    console.log('🎯 UI filters:', uiFilters);
-    
-    // Merge term filters
-    Object.assign(apiFilters, termFilters);
-    
-    // Apply explicit UI filters
-    if (uiFilters.type && uiFilters.type !== 'Any Type') {
-      // Convert to lowercase for backend
-      apiFilters.type = uiFilters.type.toLowerCase();
-    }
-    
-    if (uiFilters.priceRange && uiFilters.priceRange !== 'Any Price') {
-      const priceMap = {
-        'Under $100,000': { minPrice: 0, maxPrice: 100000 },
-        '$100,000 - $200,000': { minPrice: 100000, maxPrice: 200000 },
-        '$200,000 - $300,000': { minPrice: 200000, maxPrice: 300000 },
-        '$300,000 - $500,000': { minPrice: 300000, maxPrice: 500000 },
-        'Over $500,000': { minPrice: 500000, maxPrice: 10000000 }
-      };
-      
-      const range = priceMap[uiFilters.priceRange];
-      if (range) {
-        apiFilters.minPrice = range.minPrice;
-        apiFilters.maxPrice = range.maxPrice;
-      }
-    }
-    
-    if (uiFilters.bedrooms && uiFilters.bedrooms !== 'Any') {
-      if (uiFilters.bedrooms === '5+') {
-        apiFilters.bedrooms = 5;
-      } else {
-        apiFilters.bedrooms = parseInt(uiFilters.bedrooms);
-      }
-    }
-    
-    if (uiFilters.location) {
-      apiFilters.location = uiFilters.location;
-    }
-    
-    // Clean up empty values
-    Object.keys(apiFilters).forEach(key => {
-      if (apiFilters[key] === '' || apiFilters[key] === null || apiFilters[key] === undefined) {
-        delete apiFilters[key];
-      }
-    });
-    
-    console.log('🚀 Final API Filters:', apiFilters);
-    
-    return apiFilters;
-  };
-
-  // Handle search button click - UPDATED to use searchProperties
+  // Handle search button click
   const handleSearch = async (e) => {
     if (e) e.preventDefault();
     
@@ -204,9 +155,6 @@ const SearchBar = ({ placeholder = "Search properties..." }) => {
     setIsSearching(true);
     
     try {
-      // Convert to API filters
-      const newApiFilters = convertToApiFilters(searchTerm, filters);
-      
       // Check if we have any search criteria
       const hasSearchCriteria = searchTerm.trim() || 
         Object.values(filters).some(v => v && v !== 'Any Type' && v !== 'Any Price' && v !== 'Any');
@@ -215,13 +163,9 @@ const SearchBar = ({ placeholder = "Search properties..." }) => {
         throw new Error('Please enter search criteria');
       }
       
-      console.log('🔍 Setting API filters to:', newApiFilters);
+      // Simulate API call delay
+      await new Promise(resolve => setTimeout(resolve, 500));
       
-      // ✅ Use the dedicated searchProperties method
-      await searchProperties(newApiFilters);
-      
-      // Update API filters state for tracking
-      setApiFilters(newApiFilters);
       setHasSearched(true);
       
       // Close search panel, show results
@@ -299,14 +243,10 @@ const SearchBar = ({ placeholder = "Search properties..." }) => {
       bedrooms: '',
       location: ''
     });
-    setApiFilters(null);
     setHasSearched(false);
     setShowSearchPanel(false);
     setShowResults(false);
     setSearchError(null);
-    
-    // Clear properties in the hook
-    clearProperties();
   };
 
   // Open search panel
@@ -317,7 +257,7 @@ const SearchBar = ({ placeholder = "Search properties..." }) => {
 
   // Open results panel
   const openResultsPanel = () => {
-    if (hookHasSearched && properties.length > 0) {
+    if (hasSearched && filteredProperties.length > 0) {
       setShowResults(true);
       setShowSearchPanel(false);
     } else {
@@ -357,14 +297,14 @@ const SearchBar = ({ placeholder = "Search properties..." }) => {
         bottom: '1.5rem',
         right: '1.5rem'
       }}
-      aria-label={hookHasSearched ? "Show search results" : "Open search panel"}
-      title={hookHasSearched ? "Click to view search results" : "Click to search properties"}
+      aria-label={hasSearched ? "Show search results" : "Open search panel"}
+      title={hasSearched ? "Click to view search results" : "Click to search properties"}
     >
       <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
       </svg>
       
-      {hookHasSearched && !showResults && (
+      {hasSearched && !showResults && (
         <div className="absolute -top-1 -right-1">
           <div className="relative">
             <div className="animate-ping absolute inline-flex h-3 w-3 rounded-full bg-red-400 opacity-75"></div>
@@ -433,7 +373,7 @@ const SearchBar = ({ placeholder = "Search properties..." }) => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Property Types</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Property Type</label>
               <select
                 value={filters.type}
                 onChange={(e) => handleFilterChange('type', e.target.value)}
@@ -561,8 +501,8 @@ const SearchBar = ({ placeholder = "Search properties..." }) => {
                 </h3>
                 <p className="text-sm text-gray-500 mt-1">
                   {loading ? 'Searching...' : 
-                   properties && properties.length > 0 ? 
-                   `Found ${properties.length} propert${properties.length === 1 ? 'y' : 'ies'}` : 
+                   filteredProperties && filteredProperties.length > 0 ? 
+                   `Found ${filteredProperties.length} propert${filteredProperties.length === 1 ? 'y' : 'ies'}` : 
                    'No properties found'}
                 </p>
               </div>
@@ -599,7 +539,7 @@ const SearchBar = ({ placeholder = "Search properties..." }) => {
             {loading && (
               <div className="flex flex-col items-center justify-center py-12">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
-                <p className="text-gray-600">Searching properties...</p>
+                <p className="text-gray-600">Loading properties...</p>
               </div>
             )}
 
@@ -614,7 +554,7 @@ const SearchBar = ({ placeholder = "Search properties..." }) => {
                 <p className="text-gray-600 mb-4">{error || searchError}</p>
                 <div className="flex flex-col sm:flex-row gap-3 justify-center">
                   <button
-                    onClick={() => searchProperties(apiFilters)}
+                    onClick={() => fetchProperties()}
                     className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-200"
                   >
                     Try Again
@@ -629,7 +569,7 @@ const SearchBar = ({ placeholder = "Search properties..." }) => {
               </div>
             )}
 
-            {!loading && !error && !searchError && (!properties || properties.length === 0) && (
+            {!loading && !error && !searchError && (!filteredProperties || filteredProperties.length === 0) && (
               <div className="text-center py-12 px-4">
                 <div className="text-gray-400 mb-6">
                   <svg className="w-20 h-20 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -694,10 +634,10 @@ const SearchBar = ({ placeholder = "Search properties..." }) => {
               </div>
             )}
 
-            {!loading && !error && !searchError && properties && properties.length > 0 && (
+            {!loading && !error && !searchError && filteredProperties && filteredProperties.length > 0 && (
               <>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
-                  {properties.map((property) => (
+                  {filteredProperties.map((property) => (
                     <PropertyCard
                       key={property._id || property.id}
                       property={property}
@@ -708,7 +648,7 @@ const SearchBar = ({ placeholder = "Search properties..." }) => {
                 
                 <div className="mt-8 text-center">
                   <p className="text-gray-600 mb-3">
-                    Not finding what you're looking for?
+                    Showing {filteredProperties.length} of {allProperties?.length || 0} properties
                   </p>
                   <button
                     onClick={openSearchPanel}
