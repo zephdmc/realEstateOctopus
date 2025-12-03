@@ -33,24 +33,34 @@ const Properties = () => {
 
   // Clean filters to remove any 'id' parameter that might be coming from URL
   const cleanFilters = React.useMemo(() => {
+    // Extract id and any other unwanted parameters
     const { id, ...cleanFilters } = filters;
+    
+    // Get page from URL or default to 1
+    const pageFromUrl = parseInt(searchParams.get('page'));
+    
     return {
-      page: parseInt(searchParams.get('page')) || 1,
+      page: pageFromUrl || 1,
       limit: 12,
       ...cleanFilters,
-      sort: sortBy
+      sort: sortBy === 'newest' ? 'createdAt' : 
+            sortBy === 'price_asc' ? 'price' :
+            sortBy === 'price_desc' ? '-price' :
+            sortBy === 'popular' ? 'views' :
+            sortBy === 'area_desc' ? '-specifications.area' : 'createdAt'
     };
   }, [filters, searchParams, sortBy]);
 
-  const {
-    properties,
-    loading,
-    error,
-    currentPage,
-    totalPages,
-    totalItems,
-    refetch
-  } = useProperties(cleanFilters);
+ // With this:
+const {
+  properties,
+  loading,
+  error,
+  currentPage,
+  totalPages,
+  totalItems,
+  refetch
+} = useProperties(cleanFilters, 'default', true);
 
   // Debug: Log property images when properties change
   useEffect(() => {
