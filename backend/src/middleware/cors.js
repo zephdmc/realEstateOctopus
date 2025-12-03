@@ -7,6 +7,7 @@ export const configureCors = (app) => {
     "http://localhost:3000",
     "https://eliteproperties.vercel.app",
     "https://zephdmc.github.io",
+    "https://realestateoctopus.onrender.com",
   ].filter(Boolean);
 
   const corsOptions = {
