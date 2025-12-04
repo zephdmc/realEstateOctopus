@@ -34,9 +34,9 @@ const Header = ({ onSearch, user, onLogin, onLogout }) => {
             </div>
             </Link>
             <div>
-            <h1 className="text-2xl font-bold text-white bg-gradient-to-r from-blue-500 to-red-500 rounded-xl p-4 shadow-lg border border-white/30 hover:from-blue-600 hover:to-red-600 transition-all duration-300">
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-red-600 bg-clip-text text-transparent">
   Octopus Real Estate
-</h1>              <p className="text-xs text-red-600">Ventures LTD</p>
+</h1>             <p className="text-xs text-gray-700">Ventures LTD</p>
             </div>
           </div>
 
