@@ -9,6 +9,8 @@ import {
   FaHome,
   FaWhatsapp
 } from 'react-icons/fa';
+import { Link} from 'react-router-dom';
+
 
 const Header = ({ onSearch, user, onLogin, onLogout }) => {
   const handleWhatsAppClick = () => {
@@ -25,9 +27,12 @@ const Header = ({ onSearch, user, onLogin, onLogout }) => {
         <div className="flex items-center justify-between py-4">
           {/* Logo */}
           <div className="flex items-center space-x-3">
+            <Link 
+              to="/home" >
             <div className="bg-blue-600 text-white p-2 rounded-lg">
               <FaHome className="w-6 h-6" />
             </div>
+            </Link>
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Octopus Real Estate </h1>
               <p className="text-xs text-red-600">Ventures LTD</p>

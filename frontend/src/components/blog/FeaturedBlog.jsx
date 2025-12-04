@@ -82,7 +82,7 @@ const FeaturedBlogPosts = ({
         {/* Optional CTA Section - Only show if we have posts */}
         {!loading && posts && posts.length > 0 && (
           <div className="text-center  rounded-2xl border-2 border-red-600 mt-2">
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl shadow-xl p-12 text-white">
+            <div className="bg-gradient-to-r from-blue-600 to-red-700 rounded-2xl shadow-xl p-12 text-white">
               <h3 className="text-3xl font-bold mb-4">
                 Want More Real Estate Insights?
               </h3>
@@ -97,7 +97,7 @@ const FeaturedBlogPosts = ({
                   View All Articles
                 </Link>
                 <Link
-                  to="/newsletter"
+                  to="/home"
                   className="bg-transparent text-white px-8 py-4 border-b-2 border-red-600 rounded-lg border-2 border-white hover:bg-white hover:text-blue-600 transition-all duration-200 font-semibold text-lg hover:shadow-xl transform hover:-translate-y-0.5"
                 >
                   Subscribe to Newsletter

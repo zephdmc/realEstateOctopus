@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { WideContainer } from '../../components/layout/PageContainer';
 import PropertyGrid from '../../components/properties/PropertyGrid';
 import { useProperties } from '../../hooks/useProperties';
+import { Link } from 'react-router-dom';
 
 const FeaturedProperties = ({ 
   title = "Featured Properties",
@@ -100,18 +101,18 @@ const FeaturedProperties = ({
                 Browse our complete collection of properties or speak with one of our expert agents.
               </p>
               <div className="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-6">
-                <a
-                  href="/properties"
+                <Link
+                  to="/properties"
                   className="bg-white text-blue-600 px-8 py-4 rounded-lg hover:bg-blue-50 transition-all duration-200 font-semibold text-lg shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
                 >
                   View All Properties
-                </a>
-                <a
-                  href="/contact"
+                </Link>
+                <Link
+                  to="/contact"
                   className="bg-transparent text-white px-8 py-4 rounded-lg border-2 border-white hover:bg-white hover:text-blue-600 transition-all duration-200 font-semibold text-lg hover:shadow-xl transform hover:-translate-y-0.5"
                 >
                   Contact an Agent
-                </a>
+                </Link>
               </div>
             </div>
           </div>
