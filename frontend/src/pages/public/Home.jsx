@@ -77,7 +77,7 @@ const Home = () => {
   </span>
 </h1>
              
-              <p className="text-xl md:text-2xl text-gray-50 max-w-3xl mx-auto leading-relaxed font-light bg-white/10 backdrop-blur-md rounded-2xl p-1 border border-white/20 shadow-2xl">
+              <p className="text-xl md:text-2xl text-gray-50 max-w-3xl mx-auto leading-relaxed font-light bg-gradient-to-r from-blue-500/80 to-red-500/80 backdrop-blur-md rounded-2xl p-6 border border-white/20 shadow-2xl">
                 Discover exclusive properties with premium amenities. Expert agents ready to guide you home.
               </p>
             </div>
