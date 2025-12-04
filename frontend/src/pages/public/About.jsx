@@ -273,7 +273,7 @@ const About = () => {
         </section>
 
         {/* CTA Section */}
-        <section className="bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800 rounded-2xl p-12 text-center text-white shadow-xl">
+        <section className="bg-gradient-to-br from-blue-600 via-blue-700 to-red-500 rounded-2xl p-12 text-center text-white shadow-xl">
           <div className="max-w-4xl mx-auto">
             <div className="inline-flex items-center justify-center w-20 h-20 bg-white bg-opacity-10 rounded-2xl mb-6">
               <FaUsers className="w-10 h-10 text-white" />
