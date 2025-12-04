@@ -28,14 +28,15 @@ const Header = ({ onSearch, user, onLogin, onLogout }) => {
           {/* Logo */}
           <div className="flex items-center space-x-3">
             <Link 
-              to="/home" >
-            <div className="bg-blue-600 text-white p-2 rounded-lg">
+              to="/#" >
+            <div className="bg-gradient-to-r from-blue-500 to-red-500 text-white p-2 rounded-lg">
               <FaHome className="w-6 h-6" />
             </div>
             </Link>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Octopus Real Estate </h1>
-              <p className="text-xs text-red-600">Ventures LTD</p>
+            <h1 className="text-2xl font-bold text-white bg-gradient-to-r from-blue-500 to-red-500 rounded-xl p-4 shadow-lg border border-white/30 hover:from-blue-600 hover:to-red-600 transition-all duration-300">
+  Octopus Real Estate
+</h1>              <p className="text-xs text-red-600">Ventures LTD</p>
             </div>
           </div>
 
