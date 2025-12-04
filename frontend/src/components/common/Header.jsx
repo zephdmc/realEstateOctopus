@@ -71,7 +71,7 @@ const Header = ({ onSearch, user, onLogin, onLogout }) => {
                   <span className="text-sm text-blue-600 font-semibold">{user.name}</span>
                 </div>
                 <div className="relative group">
-                  <button className="bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700 transition-all duration-200 shadow-lg hover:shadow-xl">
+                  <button className="bg-blue-600 text-white border-b-2 border-red-500 p-3 rounded-lg hover:bg-blue-700 transition-all duration-200 shadow-lg hover:shadow-xl">
                     <FaUserCircle className="w-5 h-5" />
                   </button>
                   {/* Dropdown Menu */}
